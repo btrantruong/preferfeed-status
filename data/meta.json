@@ -1,5 +1,5 @@
 {
- "pulled_at": "2026-11-24T22:59:06Z",
+ "pulled_at": "2026-11-24T23:06:37Z",
  "launch": "2026-11-25T09:30:00+01:00",
  "launch_utc": "2026-11-25T08:30:00Z",
  "tz": "Europe/Berlin",
@@ -18,7 +18,7 @@
  "stale_after_min": null,
  "refresh_min": 2.0,
  "scripts_url": "https://github.com/btrantruong/preferfeed-status/tree/main/pipeline",
- "code_version": "77968d9",
+ "code_version": "05f8815",
  "categories": [
   {
    "status": "done",
@@ -56,22 +56,22 @@
  "countries": {
   "UK": {
    "status": "ok",
-   "as_of": "2026-11-24T22:59:06Z",
+   "as_of": "2026-11-24T23:06:37Z",
    "n": 0
   },
   "DE": {
    "status": "ok",
-   "as_of": "2026-11-24T22:59:06Z",
+   "as_of": "2026-11-24T23:06:37Z",
    "n": 0
   },
   "FR": {
    "status": "ok",
-   "as_of": "2026-11-24T22:59:06Z",
+   "as_of": "2026-11-24T23:06:37Z",
    "n": 0
   },
   "PL": {
    "status": "ok",
-   "as_of": "2026-11-24T22:59:06Z",
+   "as_of": "2026-11-24T23:06:37Z",
    "n": 0
   }
  }
