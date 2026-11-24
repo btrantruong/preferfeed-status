@@ -1,0 +1,78 @@
+{
+ "pulled_at": "2026-11-24T22:59:06Z",
+ "launch": "2026-11-25T09:30:00+01:00",
+ "launch_utc": "2026-11-25T08:30:00Z",
+ "tz": "Europe/Berlin",
+ "bin_minutes": 15,
+ "session_min": 15,
+ "ignore_codes": [
+  "NOT_FOUND"
+ ],
+ "stop_codes": {
+  "bot": "AUTOMATED_BROWSER_DETECTED",
+  "idle": "IDLE_DETECTED",
+  "reload": "PAGE_RELOAD_DETECTED"
+ },
+ "idle_min_seconds": 360,
+ "idle_min_posts": 20,
+ "stale_after_min": null,
+ "refresh_min": 2.0,
+ "scripts_url": "https://github.com/btrantruong/preferfeed-status/tree/main/pipeline",
+ "code_version": "77968d9",
+ "categories": [
+  {
+   "status": "done",
+   "reason": "done"
+  },
+  {
+   "status": "cancelled",
+   "reason": "bot"
+  },
+  {
+   "status": "cancelled",
+   "reason": "idle"
+  },
+  {
+   "status": "cancelled",
+   "reason": "reload"
+  },
+  {
+   "status": "cancelled",
+   "reason": "other"
+  },
+  {
+   "status": "incomplete",
+   "reason": "in_session"
+  },
+  {
+   "status": "incomplete",
+   "reason": "error_logged"
+  },
+  {
+   "status": "incomplete",
+   "reason": "no_error"
+  }
+ ],
+ "countries": {
+  "UK": {
+   "status": "ok",
+   "as_of": "2026-11-24T22:59:06Z",
+   "n": 0
+  },
+  "DE": {
+   "status": "ok",
+   "as_of": "2026-11-24T22:59:06Z",
+   "n": 0
+  },
+  "FR": {
+   "status": "ok",
+   "as_of": "2026-11-24T22:59:06Z",
+   "n": 0
+  },
+  "PL": {
+   "status": "ok",
+   "as_of": "2026-11-24T22:59:06Z",
+   "n": 0
+  }
+ }
+}
