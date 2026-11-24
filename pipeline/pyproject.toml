@@ -1,0 +1,20 @@
+[project]
+name = "preferfeed-status-pipeline"
+version = "0.1.0"
+description = "Pull, classify and publish aggregate fielding status for the preferFeed status page."
+requires-python = ">=3.11"
+# The DB reader comes from preferfeed_dataaccess (PFDA_DIR in config.local.env), imported at run time.
+# These are its dependencies plus what the pipeline itself uses.
+dependencies = [
+    "pandas>=3.0",
+    "sqlalchemy>=2.0,<2.1",  # 2.1 defaults postgresql:// to psycopg 3; the reader uses psycopg2
+    "psycopg2-binary",
+    "pyyaml",
+    "pyarrow",
+]
+
+[dependency-groups]
+dev = ["pytest"]
+
+[tool.uv]
+package = false

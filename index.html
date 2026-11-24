@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>preferFeed fielding status</title>
+<style>
+:root {
+  color-scheme: light;
+  --surface-0: #f6f6f4;
+  --surface-1: #fcfcfb;
+  --border: #dedcd5;
+  --grid: #ebe9e3;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #6f6e69;
+  --accent: #2a78d6;
+  --s-done: #2a78d6;
+  --s-cancelled: #eb6834;
+  --s-incomplete: #1baf7a;
+  --warn-bg: #fff4d6;
+  --warn-text: #5c4300;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --surface-0: #121211;
+    --surface-1: #1a1a19;
+    --border: #383835;
+    --grid: #2a2a28;
+    --text-primary: #f0efec;
+    --text-secondary: #c3c2b7;
+    --text-muted: #9a998f;
+    --accent: #3987e5;
+    --s-done: #3987e5;
+    --s-cancelled: #d95926;
+    --s-incomplete: #199e70;
+    --warn-bg: #3a2f10;
+    --warn-text: #f5dc9a;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-0: #121211;
+  --surface-1: #1a1a19;
+  --border: #383835;
+  --grid: #2a2a28;
+  --text-primary: #f0efec;
+  --text-secondary: #c3c2b7;
+  --text-muted: #9a998f;
+  --accent: #3987e5;
+  --s-done: #3987e5;
+  --s-cancelled: #d95926;
+  --s-incomplete: #199e70;
+  --warn-bg: #3a2f10;
+  --warn-text: #f5dc9a;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--surface-0); color: var(--text-primary);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 960px; margin: 0 auto; padding: 20px 16px 48px; }
+header h1 { font-size: 22px; margin: 0; display: inline; }
+.title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sub { color: var(--text-secondary); margin: 6px 0 0; font-size: 14px; }
+.pulls { color: var(--text-secondary); font-size: 13px; margin: 6px 0 0; }
+.pulls span { white-space: nowrap; margin-right: 12px; }
+.pulls .failed { color: var(--warn-text); background: var(--warn-bg); padding: 0 4px; border-radius: 3px; }
+.warn { background: var(--warn-bg); color: var(--warn-text); padding: 8px 12px; border-radius: 6px; margin-top: 10px; }
+details.info { margin-top: 10px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; }
+details.info summary { cursor: pointer; padding: 8px 12px; color: var(--text-secondary); font-size: 14px; }
+details.info summary::marker { content: ""; }
+details.info summary .i { display: inline-flex; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid currentColor;
+  align-items: center; justify-content: center; font: 600 12px/1 Georgia, serif; margin-right: 6px; }
+details.info .body { padding: 0 16px 12px; font-size: 14px; color: var(--text-secondary); }
+details.info .body li { margin: 4px 0; }
+.controls { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin: 18px 0 8px; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; background: var(--surface-1); color: var(--text-primary); padding: 6px 12px; font: inherit; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--border); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.refresh { display: inline-flex; gap: 10px; align-items: center; font-size: 14px; color: var(--text-secondary); }
+.refresh button { font: inherit; padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-1); color: var(--text-primary); cursor: pointer; }
+.range { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; align-items: center; font-size: 14px; color: var(--text-secondary); width: 100%; }
+.range input[type=range] { width: 100%; accent-color: var(--accent); }
+.range output { font-variant-numeric: tabular-nums; color: var(--text-primary); min-width: 9.5em; }
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-top: 14px; }
+.card h2 { font-size: 15px; margin: 0 0 2px; }
+.card .note { font-size: 13px; color: var(--text-muted); margin: 0 0 8px; }
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { fill: var(--text-muted); font-size: 12px; }
+.tip { position: absolute; pointer-events: none; background: var(--surface-0); border: 1px solid var(--border); border-radius: 6px;
+  padding: 6px 8px; font-size: 13px; color: var(--text-primary); white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,.12); display: none; }
+.tip .muted { color: var(--text-muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: var(--text-secondary); margin: 8px 0 4px; }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; }
+th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--grid); }
+th { color: var(--text-secondary); font-weight: 600; font-size: 13px; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+tr.group td { font-weight: 600; }
+tr.sub td:first-child { padding-left: 26px; color: var(--text-secondary); }
+tr.total td { font-weight: 600; border-bottom: 0; }
+.bar-cell { width: 28%; }
+.minibar { height: 8px; border-radius: 0 4px 4px 0; min-width: 0; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.empty { padding: 28px 8px; text-align: center; color: var(--text-secondary); }
+footer { margin-top: 24px; font-size: 12px; color: var(--text-muted); }
+a { color: var(--accent); }
+@media (max-width: 560px) {
+  .range { grid-template-columns: auto 1fr; }
+  .range output { grid-column: 2; min-width: 0; }
+  .bar-cell { display: none; }
+}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="title-row"><h1>preferFeed fielding status</h1></div>
+    <p class="sub" id="sub">Loading...</p>
+    <p class="pulls" id="pulls"></p>
+    <div id="warn"></div>
+    <details class="info" id="info">
+      <summary><span class="i" aria-hidden="true">i</span>About the data</summary>
+      <div class="body" id="info-body"></div>
+    </details>
+  </header>
+
+  <div class="controls">
+    <div class="seg" id="country" role="group" aria-label="Country"></div>
+    <div class="refresh">
+      <button id="refresh" type="button">Refresh</button>
+      <label><input type="checkbox" id="auto"> auto-refresh every <span id="refresh-min">2</span> min</label>
+    </div>
+    <div class="range" id="range">
+      <label for="from">From</label><input type="range" id="from" min="0" max="0" step="1" value="0"><output id="from-out"></output>
+      <label for="to">To</label><input type="range" id="to" min="0" max="0" step="1" value="0"><output id="to-out"></output>
+    </div>
+  </div>
+
+  <section class="card">
+    <h2 id="c1-title">Participants since launch</h2>
+    <p class="note" id="c1-note"></p>
+    <div class="chart" id="c1"><div class="tip" id="tip1"></div></div>
+  </section>
+
+  <section class="card">
+    <h2>Status of these participants at the last pull</h2>
+    <p class="note" id="c2-note"></p>
+    <div class="chart" id="c2"><div class="tip" id="tip2"></div></div>
+    <div class="legend" id="legend2"></div>
+    <div id="table2"></div>
+  </section>
+
+  <footer id="footer"></footer>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

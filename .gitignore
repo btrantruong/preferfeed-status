@@ -1,0 +1,7 @@
+# Per-machine paths (copy pipeline/config.local.env.example)
+pipeline/config.local.env
+# Local Python env and caches
+pipeline/.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
