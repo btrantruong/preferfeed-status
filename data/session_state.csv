@@ -45,3 +45,4 @@ bin_start,country,condition,state,n,n_disagree
 2026-11-25T16:30:00Z,UK,PREFERENCE,left,1,0
 2026-11-25T16:45:00Z,UK,RANDOM,left,1,0
 2026-11-25T18:00:00Z,UK,RANDOM,left,1,0
+2026-11-25T18:15:00Z,UK,ATTENTION,in_session,2,1

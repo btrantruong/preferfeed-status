@@ -33,3 +33,4 @@ bin_start,country,status,reason,n
 2026-11-25T16:30:00Z,UK,incomplete,no_error,1
 2026-11-25T16:45:00Z,UK,incomplete,no_error,1
 2026-11-25T18:00:00Z,UK,incomplete,no_error,1
+2026-11-25T18:15:00Z,UK,incomplete,in_session,2
