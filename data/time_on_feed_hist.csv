@@ -94,8 +94,8 @@ bin_start,country,condition,measure,group,dur_bin,n,sum_min
 2026-11-25T10:30:00Z,UK,RANDOM,total,done,6,1,5.527
 2026-11-25T10:30:00Z,UK,RANDOM,total,done,8,1,7.662
 2026-11-25T10:30:00Z,UK,RANDOM,total,done,9,1,8.18
-2026-11-25T10:45:00Z,UK,ATTENTION,final_attempt,not_done,1,1,0.173
-2026-11-25T10:45:00Z,UK,ATTENTION,total,not_done,1,1,0.173
+2026-11-25T10:45:00Z,UK,ATTENTION,final_attempt,not_done,1,1,0.505
+2026-11-25T10:45:00Z,UK,ATTENTION,total,not_done,1,1,0.678
 2026-11-25T11:00:00Z,UK,PREFERENCE,final_attempt,done,10,2,19.832
 2026-11-25T11:00:00Z,UK,PREFERENCE,total,done,10,2,19.832
 2026-11-25T11:15:00Z,UK,ATTENTION,final_attempt,done,8,2,14.961
@@ -114,3 +114,5 @@ bin_start,country,condition,measure,group,dur_bin,n,sum_min
 2026-11-25T12:30:00Z,UK,PREFERENCE,total,not_done,0,1,0.116
 2026-11-25T12:45:00Z,UK,ATTENTION,final_attempt,not_done,0,1,0.0
 2026-11-25T12:45:00Z,UK,ATTENTION,total,not_done,0,1,0.0
+2026-11-25T12:45:00Z,UK,PREFERENCE,final_attempt,done,8,1,7.066
+2026-11-25T12:45:00Z,UK,PREFERENCE,total,done,8,1,7.066
