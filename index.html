@@ -130,6 +130,8 @@ details.info .body li { margin: 4px 0; }
 .userbar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin: 6px 0; font-size: 14px; color: var(--text-secondary); }
 .userbar input, .userbar button { font: inherit; padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-1); color: var(--text-primary); }
 .userbar button { cursor: pointer; min-height: 30px; }
+.userbar button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.userbar button[disabled] { opacity: .4; cursor: default; }
 .userbar input { width: 7ch; }
 .userbar select { font: inherit; max-width: 100%; padding: 4px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-1); color: var(--text-primary); }
 .flowlabel { font-size: 11px; }

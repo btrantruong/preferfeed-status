@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { dwellRadius, postOffset, drawSample, seedHash } from "../charts/_spot.js";
+import { dwellRadius, postOffset, orderUsers, nextInCondition } from "../charts/_spot.js";
 
 test("dwellRadius: area grows with dwell up to the cap; no dwell gives null", () => {
   assert.equal(dwellRadius(null, 30000, 1.5, 7), null);
@@ -15,20 +15,23 @@ test("postOffset spreads posts symmetrically in served order", () => {
   assert.equal(postOffset(0, 1, 0.3), 0);
 });
 
-test("drawSample: seeded, without replacement, independent of the input order", () => {
-  const users = Array.from({ length: 40 }, (_, i) => ({ id: "UK:" + i }));
-  const key = (u) => u.id;
-  const a = drawSample(users, 12, "7", key), b = drawSample(users.slice().reverse(), 12, "7", key);
-  assert.equal(a.length, 12);
-  assert.equal(new Set(a.map(key)).size, 12);                       // no repeats
-  assert.deepEqual(a.map(key), b.map(key));                         // same seed, same draw, whatever the order
-  assert.notDeepEqual(a.map(key), drawSample(users, 12, "8", key).map(key));
-  assert.equal(drawSample(users, 50, "7", key).length, 40);         // n beyond the pool gives the pool
-  assert.equal(seedHash("7"), seedHash("7")); assert.notEqual(seedHash("7"), seedHash("8"));
+const U = (id, condition, created_at, extra) => Object.assign({ country: "UK", user_id: id, condition, created_at }, extra || {});
+const users = [U(1, "ATTENTION", 10), U(2, "PREFERENCE", 30), U(3, "ATTENTION", 30), U(4, "RANDOM", 20), U(5, "ATTENTION", 20, { default_for: "ATTENTION" })];
+
+test("orderUsers: condition order, newest first inside a condition", () => {
+  assert.deepEqual(orderUsers(users).map((u) => u.user_id), [4, 3, 5, 1, 2]);   // RANDOM, ATTENTION (30, 20, 10), PREFERENCE
 });
-test("drawSample is roughly uniform over seeds", () => {
-  const users = Array.from({ length: 10 }, (_, i) => ({ id: String(i).padStart(2, "0") }));
-  const hits = new Array(10).fill(0);
-  for (let s = 0; s < 2000; s++) drawSample(users, 3, "s" + s, (u) => u.id).forEach((u) => { hits[+u.id] += 1; });
-  hits.forEach((h) => assert.ok(h > 500 && h < 700, "count " + h));  // expected 600 each
+test("nextInCondition cycles through the condition's participants and wraps", () => {
+  const att = users.filter((u) => u.condition === "ATTENTION");
+  let cur = users[3];                                               // a RANDOM participant is selected
+  cur = nextInCondition(users, cur, "ATTENTION");
+  assert.equal(cur.user_id, 5);                                     // switching condition: the default pick first
+  const seq = [];
+  for (let i = 0; i < 4; i++) { cur = nextInCondition(users, cur, "ATTENTION"); seq.push(cur.user_id); }
+  assert.deepEqual(seq, [1, 3, 5, 1]);                              // the list is 3, 5, 1 (newest first): from 5 on to 1, 3, 5, 1
+  assert.equal(att.length, 3);
+  assert.equal(nextInCondition(users, users[0], "PREFERENCE").user_id, 2);
+  assert.equal(nextInCondition(users, users[0], "RANDOM").user_id, 4);
+  assert.equal(nextInCondition(users, users[0], "NOPE"), null);     // no participant: no selection
+  assert.equal(nextInCondition(users, users[1], "PREFERENCE").user_id, 2);   // a single participant stays selected
 });

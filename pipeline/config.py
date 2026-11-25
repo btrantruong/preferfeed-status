@@ -42,7 +42,6 @@ PARAM_SPEC = {
     "SPOT_USER": ("str", ""),               # COUNTRY:ID, overrides the default pick of the PREFERENCE condition
     "SPOT_TEXT_MAX_CHARS": ("int", 2000),   # sp2: longer post texts are cut and marked
     "SPOT_PUBLISH": ("str", "on"),          # on: spot_users.json (panel D) is published with the data; off: it is not, and a published copy is removed
-    "SPOT_DRAW_N": ("int", 12),             # sp1, sp2: size of the random draw behind the Draw button
     "SPOT_DWELL_CAP_S": ("int", 30),        # sp2: dwell time (seconds) at which the point size stops growing
     "DETAIL_TIMEOUT_S": ("int", 60),        # statement timeout of every detail query
     "DETAIL": ("str", "off"),               # off, basic (Q1, Q2, Q4) or full (adds Q3)
@@ -52,7 +51,7 @@ PARAM_SPEC = {
 PAGE_PARAMS = ["EVENT_BIN_MINUTES", "FLAG_BIN_MINUTES", "MIN_N_RATE", "RECORDS_BIN_WIDTH", "RECORDS_MAX",
                "REQUESTS_MAX", "BATCH_SIZE", "DIFF_RANGE", "ATTEMPTS_MAX", "ERROR_AGE_BIN_MIN",
                "ERROR_AGE_MAX_MIN", "SERVER_ERROR_CODE", "CLIENT_ERROR_CODES", "FLOW_STEPS",
-               "WARMUP_MAX_INDEX", "SPOT_MAX_USERS", "SPOT_DRAW_N", "SPOT_DWELL_CAP_S"]
+               "WARMUP_MAX_INDEX", "SPOT_MAX_USERS", "SPOT_DWELL_CAP_S"]
 DETAIL_MODES = ["off", "basic", "full"]
 
 
@@ -243,7 +242,7 @@ def validate_params(cfg):
     p = cfg.params
     for key in ("event_bin_minutes", "flag_bin_minutes", "records_bin_width", "records_max", "requests_max",
                 "batch_size", "diff_range", "attempts_max", "error_age_bin_min", "error_age_max_min",
-                "flow_steps", "warmup_max_index", "spot_max_users", "detail_timeout_s", "spot_dwell_cap_s", "spot_draw_n"):
+                "flow_steps", "warmup_max_index", "spot_max_users", "detail_timeout_s", "spot_dwell_cap_s"):
         if p[key] <= 0:
             raise ValueError(f"{key.upper()} must be > 0")
     if cfg.bin_minutes % p["event_bin_minutes"]:

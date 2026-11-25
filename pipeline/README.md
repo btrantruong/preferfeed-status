@@ -1,7 +1,7 @@
 # pipeline
 
 Changelog
-- 2026-11-25: spot_users.json (panel D) is published when SPOT_PUBLISH is on; random draw size SPOT_DRAW_N.
+- 2026-11-25: spot_users.json (panel D) is published when SPOT_PUBLISH is on.
 - 2026-11-25: added PULL_COUNTRIES (query only some countries, `--countries`) and LAUNCH_BY_COUNTRY (a later launch per country).
 - 2026-11-24: added the registry of published files (cubes.py), the detail pull (detail.py), integrity flags and attempts (checks.py), the spot check (spot.py), the replay source and the new config keys.
 

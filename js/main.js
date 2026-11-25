@@ -19,14 +19,6 @@ const panelUI = {};   // panel id -> {pager, titleEl, capEl, howEl, covEl, box, 
 // ---- context handed to the charts -----------------------------------------------------------------------
 function windowOf() { return { from: S.from, to: S.to, launchMs: D.launchMs, binMs: D.binMs }; }
 
-/** The saved random draw of the spot check: {seed}. A new browser starts with a random seed, so the first list is a draw too. */
-function readDraw() {
-  try { const d = JSON.parse(store("pfs.spotDraw") || "null"); if (d && typeof d.seed === "string") return { seed: d.seed }; } catch (e) { /* ignore */ }
-  const d = { seed: Math.random().toString(36).slice(2, 10) };
-  store("pfs.spotDraw", JSON.stringify(d));
-  return d;
-}
-
 function makeCtx(spec) {
   const meta = D.meta, w = windowOf();
   const countries = Object.keys(meta.countries);
@@ -42,8 +34,6 @@ function makeCtx(spec) {
     who: S.country === "All" ? "all countries" : S.country,
     spot, spotUserKey: store("pfs.spotUser"),
     setSpotUser: (k) => { store("pfs.spotUser", k); renderCharts(); },
-    spotDraw: readDraw(),
-    setSpotDraw: (d) => { store("pfs.spotDraw", JSON.stringify(d)); renderCharts(); },
   };
 }
 

@@ -1,6 +1,7 @@
 # preferFeed fielding status
 
 Changelog
+- 2026-11-25: panel D: the draw button is replaced by one button per condition that cycles through its participants, plus a dropdown.
 - 2026-11-25: panel D: no seed and no inventory-file warning; the button draws another batch of users.
 - 2026-11-25: panel D is public: spot_users.json is published with the data when SPOT_PUBLISH is on (participants by database id, the posts they saw, dwell times); a random draw of 12 with a seed.
 - 2026-11-25: panel D page 1 redrawn as two stacked panels (batch sums and posts with dwell time as point area; u_long sum and norm).
@@ -29,7 +30,7 @@ The top panel (participants since launch) and its window slider with two draggab
 - A. Completion status: the status of the participants at the last pull (cs0), condition balance (cs1), retaking attempts (cs2).
 - B. Data completeness and errors: requests per participant (dc3), records per done participant (dc2); server errors over time (se1), errors by type and sequence (se2), where in the session the error happens (se3), status mix with and without server errors (se4), client-side network failures (se5); integrity-flag rate over time (dc1, last page, with an i beside each flag for its definition).
 - C. Algorithm check: algorithm calls and active participants over time (ap1), warm-up exit (ap2).
-- D. User spot check (sp2, sp1): one participant's batch sums and posts (point area = dwell time) over their u_long sum and norm, and u_long over time. The participant list is a random draw of 12 (`SPOT_DRAW_N`); the button "Draw another batch of users" replaces it with a new draw. The panel appears when `data/spot_users.json` exists; a run writes it only when `DETAIL` is basic or full and `INVENTORY_FILE` is set on that machine, and a published copy stays when a later run (for example on a machine without the inventory) does not write one.
+- D. User spot check (sp2, sp1): one participant's batch sums and posts (point area = dwell time) over their u_long sum and norm, and u_long over time. One button per condition selects the next participant of that condition (a click cycles through them) and a dropdown, grouped by condition, selects a specific participant. The panel appears when `data/spot_users.json` exists; a run writes it only when `DETAIL` is basic or full and `INVENTORY_FILE` is set on that machine, and a published copy stays when a later run (for example on a machine without the inventory) does not write one.
 
 Every page has a caption with the quantities on the axes and how they were computed. Participant charts include the participants created inside the window; event charts include the events whose time lies inside it.
 
