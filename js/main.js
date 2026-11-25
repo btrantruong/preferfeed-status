@@ -19,6 +19,14 @@ const panelUI = {};   // panel id -> {pager, titleEl, capEl, howEl, covEl, box, 
 // ---- context handed to the charts -----------------------------------------------------------------------
 function windowOf() { return { from: S.from, to: S.to, launchMs: D.launchMs, binMs: D.binMs }; }
 
+/** The saved random draw of the spot check: {seed}. A new browser starts with a random seed, so the first list is a draw too. */
+function readDraw() {
+  try { const d = JSON.parse(store("pfs.spotDraw") || "null"); if (d && typeof d.seed === "string") return { seed: d.seed }; } catch (e) { /* ignore */ }
+  const d = { seed: Math.random().toString(36).slice(2, 10) };
+  store("pfs.spotDraw", JSON.stringify(d));
+  return d;
+}
+
 function makeCtx(spec) {
   const meta = D.meta, w = windowOf();
   const countries = Object.keys(meta.countries);
@@ -34,6 +42,8 @@ function makeCtx(spec) {
     who: S.country === "All" ? "all countries" : S.country,
     spot, spotUserKey: store("pfs.spotUser"),
     setSpotUser: (k) => { store("pfs.spotUser", k); renderCharts(); },
+    spotDraw: readDraw(),
+    setSpotDraw: (d) => { store("pfs.spotDraw", JSON.stringify(d)); renderCharts(); },
   };
 }
 
@@ -42,6 +52,7 @@ function renderHeader() {
   const meta = D.meta, pulledMs = Date.parse(meta.pulled_at);
   $("sub").textContent = "Participants counted from launch, " + fm.fmtDayHM(D.launchMs) + " " + fm.zoneName(D.launchMs) + ". Times are shown in " + meta.tz + ".";
   const parts = Object.entries(meta.countries).map(([c, info]) => {
+    if (info.status === "not_pulled") return "<span>" + esc(c) + ": " + (info.as_of ? "not pulled in this run, data as of " + esc(fm.fmtHM(Date.parse(info.as_of))) + " (" + ago(Date.parse(info.as_of)) + ")" : "not launched or not pulled yet") + "</span>";
     if (info.status === "ok") return "<span>" + esc(c) + ": pulled " + esc(fm.fmtHM(Date.parse(info.as_of))) + " (" + ago(Date.parse(info.as_of)) + ")</span>";
     if (info.as_of) return '<span class="failed">' + esc(c) + ": last pull failed, data as of " + esc(fm.fmtHM(Date.parse(info.as_of))) + " (" + ago(Date.parse(info.as_of)) + ")</span>";
     return '<span class="failed">' + esc(c) + ": no data yet (server not reached)</span>";
@@ -50,21 +61,25 @@ function renderHeader() {
   const stale = meta.stale_after_min && (Date.now() - pulledMs) / 60000 > meta.stale_after_min;
   $("warn").innerHTML = stale ? '<div class="warn" role="status">The data is older than ' + meta.stale_after_min + " minutes; updates may have stopped.</div>" : "";
   renderInfo();
-  $("footer").innerHTML = "Aggregate counts only; no individual data is published. Scripts: <a href=\"" + esc(meta.scripts_url) + "\">" +
+  $("footer").innerHTML = (spotAvailable ? "Aggregate counts, except panel D (see About the data). " : "Aggregate counts only; no individual data is published. ") + "Scripts: <a href=\"" + esc(meta.scripts_url) + "\">" +
     esc(meta.scripts_url.replace(/^https?:\/\//, "")) + "</a>" + (meta.code_version ? " (version " + esc(meta.code_version) + ")" : "") + ".";
 }
 
 function renderInfo() {
   const meta = D.meta, ignore = meta.ignore_codes.length ? meta.ignore_codes.join(", ") : "none";
+  // countries that launch later than the first one count from their own launch time
+  const later = Object.entries(meta.countries).filter(([, i]) => i.launch_utc && i.launch_utc !== meta.launch_utc)
+    .map(([c, i]) => "<b>" + esc(c) + " launch:</b> " + esc(c) + " is counted from " + esc(fm.fmtDayHM(Date.parse(i.launch_utc))) + " " + esc(fm.zoneName(Date.parse(i.launch_utc))) + ".");
   const items = [
     "<b>Who is counted:</b> every participant whose session was created on or after " + esc(fm.fmtDayHM(D.launchMs)) + " (" + esc(meta.tz) + "), per country server. One participant is one row in the study database.",
+    ...later,
     "<b>Time window:</b> the two handles of the slider select participants by the time their session was created, in steps of " + meta.bin_minutes + " minutes. Charts of participants use that window; charts of events (server errors, algorithm calls) use the events whose time lies inside it. Counts are the status of those participants at the last pull (shown at the top). A participant's status can still change after they are counted, for example after a restart.",
     "<b>Country:</b> All pools the countries by summing their counts; a click on a country keeps that country alone. The choice applies to every figure.",
     "<b>done:</b> reached the end page through the study timer.",
     "<b>cancelled:</b> the session was stopped by the study software. There is no cancel button for participants; a session is stopped when an automated browser is detected (bot), when the participant did not focus on the feed or view enough posts by the end (idle: under " + meta.idle_min_seconds + " s focused or under " + meta.idle_min_posts + " posts viewed), or when the timeline page was reloaded (reload). other means stopped without one of these three reasons.",
     "<b>Several codes and retakes:</b> a participant can be stopped, restart (allowed after bot or idle detection; a participant who is done cannot start again) and be stopped again. A restart sets the status back to incomplete, so a retake is recognised by its recorded attempt and by the stop that came before it. The reason shown is the last stop. Each participant is counted once, so the shares add up to 100%.",
     "<b>incomplete:</b> neither done nor stopped. These participants left before the end or are still in their session (sessions last up to about 10 minutes). possibly in session marks those who started less than " + meta.session_min + " minutes before the last pull. error logged means at least one technical error was recorded (ignoring " + esc(ignore) + ").",
-    "<b>Data and code:</b> aggregate counts only; no individual data is published. Scripts: <a href=\"" + esc(meta.scripts_url) + "\">" + esc(meta.scripts_url.replace(/^https?:\/\//, "")) + "</a>" + (meta.code_version ? " (version " + esc(meta.code_version) + ")" : "") + ".",
+    "<b>Data and code:</b> " + (spotAvailable ? "aggregate counts, except panel D. Panel D shows, for a list of participants identified by their database id (not their survey id), the posts they were served, the time they spent on each post and the profile estimated by the algorithm; it contains no survey answers or other personal data. " : "aggregate counts only; no individual data is published. ") + "Scripts: <a href=\"" + esc(meta.scripts_url) + "\">" + esc(meta.scripts_url.replace(/^https?:\/\//, "")) + "</a>" + (meta.code_version ? " (version " + esc(meta.code_version) + ")" : "") + ".",
   ];
   $("info-body").innerHTML = "<ul>" + items.map((t) => "<li>" + t + "</li>").join("") + "</ul>";
 }
@@ -76,6 +91,8 @@ function setupCountries() {
   ["All"].concat(Object.keys(D.meta.countries)).forEach((c) => {
     const b = document.createElement("button");
     b.type = "button"; b.textContent = c; b.setAttribute("aria-pressed", String(c === S.country));
+    const info = D.meta.countries[c];
+    if (info && info.status === "not_pulled" && !info.as_of) { b.classList.add("nodata"); b.title = c + " is not launched or not pulled yet"; }
     b.addEventListener("click", () => { S.country = c; store("pfs.country", c); setupCountries(); renderCharts(); });
     box.appendChild(b);
   });
@@ -119,7 +136,7 @@ function schedule() {
 // ---- panels ---------------------------------------------------------------------------------------------
 // ?only=B shows one panel and ?pages=B:3,D:1 opens pages (0-based) without storing them: for checking the figures
 const ONLY = params.get("only"), START_PAGES = Object.fromEntries((params.get("pages") || "").split(",").filter(Boolean).map((s) => s.split(":")));
-function visiblePanels() { return PANELS.filter((p) => (!p.local || spotAvailable) && (!ONLY || p.id === ONLY)); }
+function visiblePanels() { return PANELS.filter((p) => (p.needs !== "spot" || spotAvailable) && (!ONLY || p.id === ONLY)); }
 
 function buildPanels() {
   const root = $("panels");

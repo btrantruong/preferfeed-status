@@ -84,6 +84,8 @@ details.info .body li { margin: 4px 0; }
 .seg button { border: 0; background: var(--surface-1); color: var(--text-primary); padding: 6px 12px; font: inherit; cursor: pointer; }
 .seg button + button { border-left: 1px solid var(--border); }
 .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.seg button.nodata { color: var(--text-muted); }
+.seg button.nodata[aria-pressed="true"] { color: #fff; }
 .refresh { display: inline-flex; gap: 10px; align-items: center; font-size: 14px; color: var(--text-secondary); }
 .refresh button { font: inherit; padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-1); color: var(--text-primary); cursor: pointer; }
 .range2 { margin-top: 14px; }
@@ -126,6 +128,9 @@ details.info .body li { margin: 4px 0; }
 .postcard .warn { font-size: 12px; margin: 4px 0; }
 @media (max-width: 560px) { .postcard { left: 12px !important; right: 12px; top: auto !important; bottom: 12px; width: auto; max-height: 55vh; } }
 .userbar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin: 6px 0; font-size: 14px; color: var(--text-secondary); }
+.userbar input, .userbar button { font: inherit; padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-1); color: var(--text-primary); }
+.userbar button { cursor: pointer; min-height: 30px; }
+.userbar input { width: 7ch; }
 .userbar select { font: inherit; max-width: 100%; padding: 4px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-1); color: var(--text-primary); }
 .flowlabel { font-size: 11px; }
 .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-top: 14px; }

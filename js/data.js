@@ -1,5 +1,5 @@
 /* Loads meta.json and the files listed in meta.files (a file that is absent or fails is skipped), and, on the
-   local preview only, local/spot_users.json (one participant's data; it does not exist on GitHub Pages). */
+   data/spot_users.json (panel D: participants identified by database id, the posts they saw, dwell times) when it is published. */
 import { parseCSV, indexRows } from "./select.js";
 
 export async function loadAll(base) {
@@ -21,13 +21,13 @@ export async function loadAll(base) {
   return { meta, files, launchMs, binMs, eventMs };
 }
 
-/** Does the local-only spot check file exist? (HEAD request; false on GitHub Pages.) */
+/** Is the spot check file (panel D) published? (HEAD request) */
 export async function spotExists() {
-  try { return (await fetch("local/spot_users.json", { method: "HEAD", cache: "no-store" })).ok; } catch (e) { return false; }
+  try { return (await fetch("data/spot_users.json", { method: "HEAD", cache: "no-store" })).ok; } catch (e) { return false; }
 }
 
 export async function loadSpot() {
-  const r = await fetch("local/spot_users.json?t=" + Date.now(), { cache: "no-store" });
+  const r = await fetch("data/spot_users.json?t=" + Date.now(), { cache: "no-store" });
   if (!r.ok) throw new Error("spot_users.json " + r.status);
   return r.json();
 }

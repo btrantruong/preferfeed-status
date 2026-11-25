@@ -81,6 +81,34 @@ def test_spot_default_pick_batches_and_nan():
     json.dumps(rec, allow_nan=False)
 
 
+def test_spot_dwell_goes_to_the_signalled_batch_and_u_long_norm():
+    inv = pd.DataFrame({"country": "UK", "platform": "X", "text": ["t"] * 12, **{d: [1] * 12 for d in spot.PROFILE_DIMS}},
+                       index=list("abcdefghijkl"))
+    ids0, ids1 = list("abcdefghij"), list("klmno")[:2] + ["a", "b", "c"]          # init serves batches 1 and 2; request 1 serves batch 3
+    rows = pd.DataFrame({
+        "user_id": [1, 1, 1], "endpoint": ["init", "next_batch", "next_batch"], "timestamp_server": [0, 1000, 2000],
+        "request_index": [0, 1, 2], "phase": [None, "warmup", "warmup"], "draw": ["initial_feed", "initial_feed", "recommend"],
+        "n_batches_served": [2, 3, 4], "u_long": [[0] * 5, [0] * 5, [3, 4, 0, 0, None]],
+        "served_post_ids": [ids0, ids1, ids1],
+        "signal_post_ids": [[], list("abcde"), list("fghij")],                       # request 1 reports batch 1, request 2 batch 2
+        "dwell_times": [[], [1000, 2000, 3000, 4000, None], [10, 20, 30, 40, 50]],
+        "signal_batch": [None, 1, 2], "inventory_sha256": ["s"] * 3})
+    rec = spot.user_record(rows, inv, 5, 50, {})
+    by = {b["batch"]: b for e in rec["exchanges"] for b in e["batches"]}
+    assert by[1]["dwell_ms"] == [1000.0, 2000.0, 3000.0, 4000.0, None]            # a missing dwell stays null
+    assert by[2]["dwell_ms"] == [10.0, 20.0, 30.0, 40.0, 50.0]
+    assert by[3]["dwell_ms"] == [None] * len(by[3]["post_ids"])                   # no later request reported batch 3
+    assert rec["dwell_unmatched"] == 0
+    last = rec["exchanges"][2]
+    assert last["u_long_sum"] == 7.0 and abs(last["u_long_norm"] - 5.0) < 1e-12
+    bad = rows.assign(signal_batch=[None, 3, 2], signal_post_ids=[[], list("fghij"), list("fghij")],
+                      dwell_times=[[], [1, 2, 3, 4, 5], [10, 20, 30, 40, 50]])   # request 1 claims batch 3 with ids not in it
+    rec = spot.user_record(bad, inv, 5, 50, {})
+    assert rec["dwell_unmatched"] == 5 and all(d is None for d in {b["batch"]: b for e in rec["exchanges"] for b in e["batches"]}[3]["dwell_ms"])
+    import json
+    json.dumps(rec, allow_nan=False)
+
+
 def test_record_counts_are_cached_once_final():
     class Src:
         calls = 0

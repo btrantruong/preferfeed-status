@@ -83,11 +83,27 @@ def cut_text(text, max_chars):
     return (t[:max_chars], True) if len(t) > max_chars else (t, False)
 
 
+def dwell_by_batch(rows):
+    """{batch: {post_id: dwell in ms}} from the signals: the exchange whose signal_batch is b carries the dwell of the
+    posts of batch b (signal_post_ids and dwell_times have the same order). Exchanges without signal_batch,
+    with lists of different length or with a missing dwell give nothing."""
+    out = {}
+    for r in rows.itertuples():
+        b, ids, dw = getattr(r, "signal_batch", None), getattr(r, "signal_post_ids", None), getattr(r, "dwell_times", None)
+        if b is None or pd.isna(b) or not isinstance(ids, (list, tuple, np.ndarray)) or not isinstance(dw, (list, tuple, np.ndarray)):
+            continue
+        if len(ids) != len(dw):
+            continue
+        out[int(b)] = {i: float(d) for i, d in zip(ids, dw) if d is not None and not pd.isna(d)}
+    return out
+
+
 def user_record(rows, inv, batch_size, max_chars, posts):
     """One participant's exchanges and batches; posts (dict) collects the posts that were served."""
     rows = exchanges_of_final_attempt(rows)
     t0 = rows["timestamp_server"].min()
-    exchanges, last_batch = [], 0
+    dwell = dwell_by_batch(rows)
+    exchanges, last_batch, unmatched = [], 0, 0
     for r in rows.itertuples():
         ids = list(r.served_post_ids) if isinstance(r.served_post_ids, (list, tuple, np.ndarray)) else []
         chunks = [ids[k:k + batch_size] for k in range(0, len(ids), batch_size)]
@@ -107,14 +123,18 @@ def user_record(rows, inv, batch_size, max_chars, posts):
                                 "scores": [int(row[d]) for d in PROFILE_DIMS],
                                 "sum": float(sum(int(row[d]) for d in PROFILE_DIMS)), "text": text, "cut": cut}
             sums = [posts[i]["sum"] for i in found]
+            dw = dwell.get(first + k, {})
+            unmatched += len([i for i in dw if i not in chunk])
             batches.append({"batch": first + k, "post_ids": found, "n_served": len(chunk),
-                            "mean_sum": float(np.mean(sums)) if sums else None})
+                            "mean_sum": float(np.mean(sums)) if sums else None,
+                            "dwell_ms": [dw.get(i) for i in found]})
         exchanges.append({"request_index": None if r.request_index is None or pd.isna(r.request_index)
                           else int(r.request_index), "endpoint": r.endpoint, "phase": nn(r.phase), "draw": nn(r.draw),
                           "t_min": float((r.timestamp_server - t0) / 60_000), "u_long": u or None,
                           "u_long_sum": float(np.nansum([np.nan if v is None else v for v in u])) if u else None,
+                          "u_long_norm": float(np.sqrt(np.nansum([np.nan if v is None else v * v for v in u]))) if u else None,
                           "batches": batches})
-    return {"exchanges": exchanges, "t0_ms": int(t0)}
+    return {"exchanges": exchanges, "t0_ms": int(t0), "dwell_unmatched": int(unmatched)}
 
 
 def build_spot(picks, spot_rows, inv_by_country, p, local_sha, inventory_note=None):
@@ -148,4 +168,5 @@ def build_spot(picks, spot_rows, inv_by_country, p, local_sha, inventory_note=No
                           "n_next_batch": int(meta["n_next_batch"]), **rec})
     users.sort(key=lambda u: -u["created_at"])
     return {"users": users, "posts": posts, "inventory": inventory, "dims": PROFILE_DIMS,
-            "batch_size": p["batch_size"], "note": inventory_note}
+            "batch_size": p["batch_size"], "note": inventory_note,
+            "dwell_unmatched": sum(u["dwell_unmatched"] for u in users)}

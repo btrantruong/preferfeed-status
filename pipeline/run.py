@@ -3,6 +3,7 @@
 Usage (through run.sh, which picks the uv env):
   ./run.sh                     pull, aggregate and push
   ./run.sh --no-push           pull and aggregate only; look at the summary first
+  ./run.sh --countries UK,DE   query only these countries (the others keep their last published data)
   ./run.sh --set LAUNCH=2026-11-20T14:00 --no-push   override a config value for this run
 """
 import argparse
@@ -47,7 +48,10 @@ def main(argv=None):
     p.add_argument("--no-pull", action="store_true", help="skip git pull before the run")
     p.add_argument("--set", action="append", default=[], metavar="KEY=VALUE",
                    help="override a config value for this run (repeatable)")
+    p.add_argument("--countries", metavar="CC,CC", help="query only these countries; same as --set PULL_COUNTRIES=CC,CC")
     args = p.parse_args(argv)
+    if args.countries:
+        args.set = args.set + [f"PULL_COUNTRIES={args.countries}"]
 
     cfg = cfgmod.load(HERE, args.set)
     os.makedirs(cfg.outdir, exist_ok=True)
@@ -79,7 +83,7 @@ def main(argv=None):
         print(f"detail ({cfg.params['detail']}): " + ", ".join(f"{c} {s}" for c, s in result["detail_status"].items()))
         for cc, err in result["detail_errors"].items():
             print(f"detail failed {cc}: {err} (detail files keep that country's last published rows)")
-        print(f"spot check (local only): {result['spot']}")
+        print(f"spot check (panel D, {'published' if cfg.params['spot_publish'] == 'on' else 'not published'}): {result['spot']}")
         big = [f"{n} {sz // 1024} KB" for n, sz in result["sizes"].items() if sz > cfg.params["max_file_kb"] * 1024]
         print("file sizes: " + ", ".join(f"{n} {sz / 1024:.0f} KB" for n, sz in result["sizes"].items()))
         if big:
@@ -90,7 +94,7 @@ def main(argv=None):
             print("--no-push: not published")
         else:
             try:
-                commit = publish.publish(cfg, result["files"], result["meta_path"], meta["pulled_at"])
+                commit = publish.publish(cfg, result["files"], result["meta_path"], meta["pulled_at"], remove=result["remove"])
                 record["pushed"], record["commit"] = True, commit
                 print(f"published commit {commit}")
             except publish.PublishError as e:

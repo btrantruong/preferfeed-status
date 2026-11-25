@@ -64,9 +64,11 @@ def count_records(source, cc, thresholds, cache, pulled_ms, session_min):
     return out
 
 
-def active_bins(source, cc, launch_ms, bin_ms, cache, pulled_ms, session_min):
-    """DataFrame bin_ms, n_active for all bins since launch; bins that ended long enough ago come from the cache."""
-    c = cache["active"].setdefault(cc, {"final_until": launch_ms, "bins": {}})
+def active_bins(source, cc, launch_ms, bin_ms, cache, pulled_ms, session_min, first_ms=None):
+    """DataFrame bin_ms, n_active for all bins since the country's launch (first_ms; default launch_ms); bins are
+    on the grid of launch_ms; bins that ended long enough ago come from the cache."""
+    first = launch_ms if first_ms is None else launch_ms + ((first_ms - launch_ms) // bin_ms) * bin_ms
+    c = cache["active"].setdefault(cc, {"final_until": first, "bins": {}})
     safe = pulled_ms - session_min * 60_000
     start = int(c["final_until"])
     fresh = source.active(cc, launch_ms, start, bin_ms)
@@ -77,11 +79,12 @@ def active_bins(source, cc, launch_ms, bin_ms, cache, pulled_ms, session_min):
     return pd.DataFrame({"bin_ms": [int(b) for b in c["bins"]], "n_active": list(c["bins"].values())})
 
 
-def run_country(source, cfg, cc, P_cc, launch_ms, end_ms, pulled_ms, cache, mode):
+def run_country(source, cfg, cc, P_cc, launch_ms, end_ms, pulled_ms, cache, mode, cc_launch_ms=None):
     """Detail rows of one country. Returns dict ex (with attempt ids), starts, final_start, counts, active.
     Raises on a failed query (the caller marks the country failed)."""
     p = cfg.params
-    ex = source.exchanges(cc, launch_ms, end_ms)
+    cc_launch_ms = launch_ms if cc_launch_ms is None else cc_launch_ms
+    ex = source.exchanges(cc, cc_launch_ms, end_ms)
     visited_attempt = {(cc, u): a for u, a in zip(P_cc["user_id"], P_cc["attempt"]) if a is not None and not pd.isna(a)}
     seg = checks.segment_attempts(ex, visited_attempt) if not ex.empty else ex.assign(
         attempt_id=pd.Series(dtype="int64"), final_attempt=pd.Series(dtype="int64"))
@@ -94,7 +97,8 @@ def run_country(source, cfg, cc, P_cc, launch_ms, end_ms, pulled_ms, cache, mode
     counts = count_records(source, cc, thr, cache, pulled_ms, cfg.session_min)
     active = None
     if mode == "full":
-        active = active_bins(source, cc, launch_ms, p["event_bin_minutes"] * 60_000, cache, pulled_ms, cfg.session_min)
+        active = active_bins(source, cc, launch_ms, p["event_bin_minutes"] * 60_000, cache, pulled_ms, cfg.session_min,
+                             first_ms=cc_launch_ms)
         active["country"] = cc
     return {"ex": seg, "starts": starts, "final_start": final_start,
             "counts": {(cc, u): n for u, n in counts.items()}, "active": active}
@@ -106,11 +110,16 @@ def empty_result():
     return {"ex": ex, "starts": pd.Series(dtype="float64"), "final_start": {}, "counts": {}, "active": None}
 
 
-def run(cfg, source, P, launch_ms, end_ms, pulled_ms, ok_countries, cache):
-    """All countries. Returns (results {cc: dict}, status {cc: ok|failed|off}, errors {cc: message})."""
+def run(cfg, source, P, launch_ms, end_ms, pulled_ms, ok_countries, cache, launch_cc=None):
+    """All countries. Returns (results {cc: dict}, status {cc: ok|failed|off|not_pulled}, errors {cc: message}).
+    launch_cc: {cc: launch in ms} for countries that launch later than launch_ms."""
+    launch_cc = launch_cc or {}
     mode = cfg.params["detail"]
     results, status, errors = {}, {}, {}
     for cc in cfg.countries:
+        if cc not in cfg.pulled_countries():
+            status[cc] = "not_pulled"
+            continue
         if mode == "off" or cc not in ok_countries:
             status[cc] = "off" if mode == "off" else "failed"
             continue
@@ -119,7 +128,8 @@ def run(cfg, source, P, launch_ms, end_ms, pulled_ms, ok_countries, cache):
             status[cc] = "ok"
             continue
         try:
-            results[cc] = run_country(source, cfg, cc, P[P["country"] == cc], launch_ms, end_ms, pulled_ms, cache, mode)
+            results[cc] = run_country(source, cfg, cc, P[P["country"] == cc], launch_ms, end_ms, pulled_ms, cache, mode,
+                                       launch_cc.get(cc))
             status[cc] = "ok"
         except Exception as e:  # a detail failure must not stop the core files; class name only, no host
             status[cc] = "failed"

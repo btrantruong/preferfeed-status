@@ -22,5 +22,5 @@ export const PANELS = [
   { id: "A", title: "Completion status", pages: [cs0, cs1, cs2] },
   { id: "B", title: "Data completeness and errors", pages: [dc3, dc2, se1, se2, se3, se4, se5, dc1] },
   { id: "C", title: "Algorithm check", pages: [ap1, ap2] },
-  { id: "D", title: "User spot check (local preview only)", pages: [sp2, sp1], local: true },
+  { id: "D", title: "User spot check", pages: [sp2, sp1], needs: "spot" },
 ];

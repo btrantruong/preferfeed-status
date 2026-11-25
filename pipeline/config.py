@@ -12,6 +12,9 @@ SHARED_KEYS = ["LAUNCH", "TZ", "COUNTRIES", "CREDS_KEYS", "BIN_MINUTES", "SESSIO
 LOCAL_KEYS = ["MACHINE", "PFDA_DIR", "CREDS", "OUTDIR"]
 # Optional per-machine keys (default in the second column; empty string = not set).
 OPTIONAL_LOCAL_KEYS = {"INVENTORY_FILE": "", "SOURCE": "live", "PULLED_AT": ""}
+# Optional shared keys (config.env or --set). PULL_COUNTRIES: the countries queried in this run (a subset of
+# COUNTRIES; empty = all). LAUNCH_BY_COUNTRY: label:time pairs for countries that launch later than LAUNCH.
+OPTIONAL_SHARED_KEYS = {"PULL_COUNTRIES": "", "LAUNCH_BY_COUNTRY": ""}
 
 # Chart and detail-pull parameters: key -> (kind, default). config.env may set any of them; a key that is
 # missing there takes the default, so an older config.env keeps working. They are copied to meta.json
@@ -38,6 +41,9 @@ PARAM_SPEC = {
     "SPOT_MIN_REQUESTS": ("int", 10),       # sp1, sp2: default pick needs this many next_batch exchanges
     "SPOT_USER": ("str", ""),               # COUNTRY:ID, overrides the default pick of the PREFERENCE condition
     "SPOT_TEXT_MAX_CHARS": ("int", 2000),   # sp2: longer post texts are cut and marked
+    "SPOT_PUBLISH": ("str", "on"),          # on: spot_users.json (panel D) is published with the data; off: it is not, and a published copy is removed
+    "SPOT_DRAW_N": ("int", 12),             # sp1, sp2: size of the random draw behind the Draw button
+    "SPOT_DWELL_CAP_S": ("int", 30),        # sp2: dwell time (seconds) at which the point size stops growing
     "DETAIL_TIMEOUT_S": ("int", 60),        # statement timeout of every detail query
     "DETAIL": ("str", "off"),               # off, basic (Q1, Q2, Q4) or full (adds Q3)
     "MAX_FILE_KB": ("int", 500),            # warning only
@@ -46,7 +52,7 @@ PARAM_SPEC = {
 PAGE_PARAMS = ["EVENT_BIN_MINUTES", "FLAG_BIN_MINUTES", "MIN_N_RATE", "RECORDS_BIN_WIDTH", "RECORDS_MAX",
                "REQUESTS_MAX", "BATCH_SIZE", "DIFF_RANGE", "ATTEMPTS_MAX", "ERROR_AGE_BIN_MIN",
                "ERROR_AGE_MAX_MIN", "SERVER_ERROR_CODE", "CLIENT_ERROR_CODES", "FLOW_STEPS",
-               "WARMUP_MAX_INDEX", "SPOT_MAX_USERS"]
+               "WARMUP_MAX_INDEX", "SPOT_MAX_USERS", "SPOT_DRAW_N", "SPOT_DWELL_CAP_S"]
 DETAIL_MODES = ["off", "basic", "full"]
 
 
@@ -91,6 +97,16 @@ class Config:
     inventory_file: str = ""  # runtime inventory parquet for the spot check (local only)
     source: str = "live"      # live or export:FOLDER (replay)
     pulled_at: str = ""       # ISO time of the pull, replay only
+    pull_countries: list = field(default_factory=list)       # queried in this run; empty = every country
+    launch_by_country: dict = field(default_factory=dict)    # country -> naive launch time (in tz) if later than launch
+
+    def pulled_countries(self):
+        """Countries queried in this run, in the order of `countries`."""
+        return [c for c in self.countries if not self.pull_countries or c in self.pull_countries]
+
+    def launch_of(self, cc):
+        """Launch time of one country (naive, in tz): its own entry or the shared LAUNCH."""
+        return self.launch_by_country.get(cc, self.launch)
 
 
 def read_env_file(path):
@@ -147,7 +163,7 @@ def load(pipeline_dir, overrides=None):
     raw = read_env_file(shared_path)
     raw.update(read_env_file(local_path))
     over = parse_overrides(overrides)
-    unknown = set(over) - set(SHARED_KEYS) - set(LOCAL_KEYS) - set(PARAM_SPEC) - set(OPTIONAL_LOCAL_KEYS) - {"UV"}
+    unknown = set(over) - set(SHARED_KEYS) - set(LOCAL_KEYS) - set(PARAM_SPEC) - set(OPTIONAL_LOCAL_KEYS) - set(OPTIONAL_SHARED_KEYS) - {"UV"}
     if unknown:
         raise ValueError(f"unknown --set keys: {sorted(unknown)}")
     raw.update(over)
@@ -156,7 +172,7 @@ def load(pipeline_dir, overrides=None):
         raise ValueError(f"missing config keys: {missing}")
 
     params = {k.lower(): parse_param(kind, raw.get(k, default)) for k, (kind, default) in PARAM_SPEC.items()}
-    optional = {k: raw.get(k, d) for k, d in OPTIONAL_LOCAL_KEYS.items()}
+    optional = {k: raw.get(k, d) for k, d in {**OPTIONAL_LOCAL_KEYS, **OPTIONAL_SHARED_KEYS}.items()}
     site_dir = os.path.realpath(os.path.join(pipeline_dir, ".."))
     expand = lambda p: os.path.abspath(os.path.expanduser(p))
     cfg = Config(
@@ -186,6 +202,8 @@ def load(pipeline_dir, overrides=None):
         inventory_file=expand(optional["INVENTORY_FILE"]) if optional["INVENTORY_FILE"] else "",
         source=optional["SOURCE"],
         pulled_at=optional["PULLED_AT"],
+        pull_countries=[c.upper() for c in parse_list(optional["PULL_COUNTRIES"])],
+        launch_by_country={k.upper(): v for k, v in parse_map(optional["LAUNCH_BY_COUNTRY"]).items()},
     )
     validate(cfg)
     return cfg
@@ -199,6 +217,17 @@ def validate(cfg):
     missing_keys = [c for c in cfg.countries if c not in cfg.creds_keys]
     if missing_keys:
         raise ValueError(f"CREDS_KEYS has no entry for {missing_keys}")
+    bad = [c for c in cfg.pull_countries if c not in cfg.countries]
+    if bad:
+        raise ValueError(f"PULL_COUNTRIES has {bad}, which are not in COUNTRIES {cfg.countries}")
+    bad = [c for c in cfg.launch_by_country if c not in cfg.countries]
+    if bad:
+        raise ValueError(f"LAUNCH_BY_COUNTRY has {bad}, which are not in COUNTRIES {cfg.countries}")
+    import pandas as pd
+    first = pd.Timestamp(cfg.launch)
+    for cc, t in cfg.launch_by_country.items():
+        if pd.Timestamp(t) < first:
+            raise ValueError(f"LAUNCH_BY_COUNTRY {cc} {t} is before LAUNCH {cfg.launch}; LAUNCH is the earliest launch")
     # Row-level files must never land in the public repo.
     if is_inside(cfg.outdir, cfg.site_dir):
         raise ValueError(f"OUTDIR {cfg.outdir} is inside the site repo {cfg.site_dir}")
@@ -214,7 +243,7 @@ def validate_params(cfg):
     p = cfg.params
     for key in ("event_bin_minutes", "flag_bin_minutes", "records_bin_width", "records_max", "requests_max",
                 "batch_size", "diff_range", "attempts_max", "error_age_bin_min", "error_age_max_min",
-                "flow_steps", "warmup_max_index", "spot_max_users", "detail_timeout_s"):
+                "flow_steps", "warmup_max_index", "spot_max_users", "detail_timeout_s", "spot_dwell_cap_s", "spot_draw_n"):
         if p[key] <= 0:
             raise ValueError(f"{key.upper()} must be > 0")
     if cfg.bin_minutes % p["event_bin_minutes"]:
@@ -227,6 +256,8 @@ def validate_params(cfg):
         raise ValueError("ERROR_AGE_MAX_MIN must be a multiple of ERROR_AGE_BIN_MIN")
     if p["detail"] not in DETAIL_MODES:
         raise ValueError(f"DETAIL must be one of {DETAIL_MODES}")
+    if p["spot_publish"] not in ("on", "off"):
+        raise ValueError("SPOT_PUBLISH must be on or off")
     if p["spot_user"] and (":" not in p["spot_user"] or not p["spot_user"].split(":", 1)[1].isdigit()):
         raise ValueError("SPOT_USER must be COUNTRY:ID")
     if cfg.source != "live":

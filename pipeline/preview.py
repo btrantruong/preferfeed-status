@@ -1,8 +1,7 @@
 """Serve the page locally with /data/ mapped to OUTDIR (the last run's files, pushed or not).
 
   ./run.sh is not needed; run:  uv run --locked python preview.py [--port 8765] [--host 127.0.0.1]
-/data/ is mapped to OUTDIR for the registry files and meta.json; /local/spot_users.json (panel D, one
-participant's data) is served from OUTDIR here only: publish.py never copies it, so a Pages-like serve hides panel D.
+/data/ is mapped to OUTDIR for the registry files, meta.json and spot_users.json (panel D).
 Then open http://127.0.0.1:8765/ (on barnard through VS Code port forwarding).
 """
 import argparse
@@ -18,8 +17,7 @@ import config as cfgmod  # noqa: E402
 import cubes  # noqa: E402
 
 PUBLIC = {"index.html", ""}  # site files served from the clone; js/ and css/ are served by extension
-DATA_NAMES = set(cubes.FILE_NAMES) | {"meta.json"}  # the only files served under data/
-LOCAL_NAMES = {"spot_users.json"}  # row level (one participant's data): served under local/ only, from OUTDIR
+DATA_NAMES = set(cubes.FILE_NAMES) | {"meta.json", "spot_users.json"}  # the only files served under data/
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -34,9 +32,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             name = rel[len("data/"):]
             # names of the registry only: never participants.csv, history/ or the cache
             return os.path.join(self.data_dir, name) if name in DATA_NAMES else missing
-        if rel.startswith("local/"):
-            name = rel[len("local/"):]
-            return os.path.join(self.data_dir, name) if name in LOCAL_NAMES else missing
         parts = rel.split("/")
         if (len(parts) == 2 and parts[0] in ("js", "css") or len(parts) == 3 and parts[:2] == ["js", "charts"]) \
                 and ".." not in parts and parts[-1].endswith((".js", ".css")):

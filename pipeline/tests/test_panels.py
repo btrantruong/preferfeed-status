@@ -1,4 +1,5 @@
 """The published files end to end on a synthetic export: values, schema guards, failure domains."""
+import dataclasses
 import json
 import os
 import sys
@@ -103,11 +104,57 @@ def test_detail_failure_keeps_core_and_previous_detail_rows(tmp_path):
     assert second["meta"]["files"]["status_bins.csv"]["as_of"]["UK"] == second["meta"]["pulled_at"]
 
 
-def test_spot_file_is_local_and_never_in_the_publish_list(tmp_path):
-    import publish
+def spot_cfg(tmp_path, publish_spot="on"):
+    """scenario with an inventory file that has the posts of the exchanges (a to o), so that the spot file is written."""
+    inv = pd.DataFrame({"post_id": list("abcdefghijklmno"), "country": "UK", "platform": "X", "text": "t",
+                        **{d: 1 for d in ["us_v_them", "fear", "outrage", "pride", "hope"]}})
+    path = str(tmp_path / "inventory.parquet")
+    inv.to_parquet(path)
     cfg = scenario(tmp_path)
-    res = aggregate.run(cfg)
-    assert "spot_users.json" not in publish.DATA_FILES and "participants.csv" not in publish.DATA_FILES
-    assert "spot_users.json" not in res["files"] and "participants.csv" not in res["files"]
+    return dataclasses.replace(cfg, inventory_file=path, params={**cfg.params, "spot_publish": publish_spot, "spot_min_requests": 1})
+
+
+def test_spot_file_is_published_only_when_on_and_only_with_the_listed_names(tmp_path):
+    import publish
+    res = aggregate.run(spot_cfg(tmp_path))
+    assert "participants.csv" not in publish.DATA_FILES and "history" not in publish.DATA_FILES
+    assert "participants.csv" not in res["files"] and res["remove"] == []
+    assert "spot_users.json" in res["files"] and res["meta"]["spot"]["n_users"] >= 1
+    assert res["meta"]["spot"]["as_of"] == res["meta"]["pulled_at"]
+    (tmp_path / "off").mkdir()
+    off = aggregate.run(spot_cfg(tmp_path / "off", "off"))
+    assert "spot_users.json" not in off["files"] and off["remove"] == ["spot_users.json"] and off["meta"]["spot"] is None
     with pytest.raises(publish.PublishError):
-        publish.publish(cfg, {"spot_users.json": "x"}, res["meta_path"], "t", warn=lambda m: None)
+        publish.publish(spot_cfg(tmp_path), {"participants.csv": "x"}, res["meta_path"], "t", warn=lambda m: None)
+
+
+def test_published_spot_copy_is_kept_when_a_run_has_none_and_removed_when_off(tmp_path):
+    import publish, subprocess
+    cfg = spot_cfg(tmp_path)
+    site = cfg.site_dir
+    for a in (["init", "-q", "-b", "main"], ["config", "user.email", "t@t"], ["config", "user.name", "t"],
+              ["commit", "-q", "--allow-empty", "-m", "init"]):
+        subprocess.run(["git", "-C", site, *a], check=True)
+    res = aggregate.run(cfg)
+    publish.git(site, "remote", "add", "origin", str(tmp_path / "remote.git"))
+    subprocess.run(["git", "init", "-q", "--bare", str(tmp_path / "remote.git")], check=True)
+    publish.publish(cfg, res["files"], res["meta_path"], "t1", warn=lambda m: None, remove=res["remove"])
+    assert os.path.isfile(os.path.join(site, "data", "spot_users.json"))
+    # a run without INVENTORY_FILE writes no spot file: the published copy and its meta entry stay
+    no_inv = dataclasses.replace(cfg, inventory_file="")
+    second = aggregate.run(no_inv)
+    assert "spot_users.json" not in second["files"] and second["meta"]["spot"] == res["meta"]["spot"]
+    publish.publish(no_inv, second["files"], second["meta_path"], "t2", warn=lambda m: None, remove=second["remove"])
+    assert os.path.isfile(os.path.join(site, "data", "spot_users.json"))
+    # SPOT_PUBLISH off removes it
+    off = dataclasses.replace(cfg, params={**cfg.params, "spot_publish": "off"})
+    third = aggregate.run(off)
+    publish.publish(off, third["files"], third["meta_path"], "t3", warn=lambda m: None, remove=third["remove"])
+    assert not os.path.exists(os.path.join(site, "data", "spot_users.json"))
+
+
+def test_detail_skips_countries_not_pulled(tmp_path):
+    cfg = dataclasses.replace(scenario(tmp_path, "full", countries=("UK", "DE")), pull_countries=["UK"])
+    res = aggregate.run(cfg)
+    assert res["detail_status"] == {"UK": "ok", "DE": "not_pulled"}
+    assert res["meta"]["countries"]["DE"]["status"] == "not_pulled" and res["meta"]["detail"]["DE"]["status"] == "not_pulled"

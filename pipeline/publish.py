@@ -1,7 +1,7 @@
 """Git steps: update the clone before a run, and commit + push the data files after it.
 
-The data files are the files of cubes.REGISTRY that the run produced, plus meta.json. Nothing else is ever
-copied: participants.csv, history/, detail_cache.json and spot_users.json stay in OUTDIR."""
+The data files are the files of cubes.REGISTRY that the run produced, plus meta.json and, when SPOT_PUBLISH is on,
+spot_users.json (panel D). Nothing else is ever copied: participants.csv, history/ and detail_cache.json stay in OUTDIR."""
 import os
 import shutil
 import subprocess
@@ -9,7 +9,7 @@ import time
 
 import cubes
 
-DATA_FILES = cubes.FILE_NAMES + ["meta.json"]  # the only names that may be copied into data/
+DATA_FILES = cubes.FILE_NAMES + ["meta.json", "spot_users.json"]  # the only names that may be copied into data/
 
 
 class PublishError(RuntimeError):
@@ -43,9 +43,10 @@ def minutes_since_last_data_push(site_dir, remote, branch):
     return (time.time() - int(out)) / 60
 
 
-def publish(cfg, files, meta_path, pulled_at, warn=print):
+def publish(cfg, files, meta_path, pulled_at, warn=print, remove=()):
     """Copy the data files into the clone, commit only them, push. Returns the commit hash.
-    files: {file name: path} of the produced registry files (names outside the registry are refused)."""
+    files: {file name: path} of the produced files (names outside DATA_FILES are refused).
+    remove: names of data files to delete from the clone (a published spot_users.json when SPOT_PUBLISH is off)."""
     copy = dict(files)
     copy["meta.json"] = meta_path
     outside = [n for n in copy if n not in DATA_FILES]
@@ -63,6 +64,13 @@ def publish(cfg, files, meta_path, pulled_at, warn=print):
     for name, src in copy.items():
         shutil.copyfile(src, os.path.join(data_dir, name))
     paths = [f"data/{n}" for n in copy]
+    for name in remove:
+        if name not in DATA_FILES or name == "meta.json":
+            raise PublishError(f"cannot remove {name}")
+        target = os.path.join(data_dir, name)
+        if os.path.isfile(target):
+            os.remove(target)
+            paths.append(f"data/{name}")   # the deletion is staged by git add and committed with the rest
     git(site, "add", "--", *paths)
     msg = f"data: pulled_at {pulled_at} ({cfg.machine})"
     r = git(site, "commit", "--quiet", "-m", msg, "--", *paths, check=False)

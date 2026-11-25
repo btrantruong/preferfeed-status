@@ -1,4 +1,4 @@
-/* D1. User spot check: u_long over time (local preview only). */
+/* D1. User spot check: u_long over time (panel D). */
 import { frame, linear, yTicks, yAxis, baseline, el, text, tooltip, local, legend } from "../svg.js";
 import { DIMS, DIM_VARS } from "../colors.js";
 import { pickUser } from "./_spot.js";
@@ -6,7 +6,7 @@ import { css, h } from "../util.js";
 
 export default {
   id: "sp1", title: "u_long over time", files: [], window: "created",
-  caption: () => "x: minutes since the first exchange of the participant's final attempt; one point per init or next_batch response, marked by small ticks. y: the five components of u_long (us_v_them, fear, outrage, pride, hope; mean-centered scores, so the unit is the score deviation from the inventory mean) as logged with the response. The thin line is 0; the vertical line marks the last exchange in phase warmup. Local preview only: it shows one participant's data.",
+  caption: () => "x: minutes since the first exchange of the participant's final attempt; one point per init or next_batch response, marked by small ticks. y: the five components of u_long (us_v_them, fear, outrage, pride, hope; mean-centered scores, so the unit is the score deviation from the inventory mean) as logged with the response. The thin line is 0; the vertical line marks the last exchange in phase warmup. It shows one participant, identified by database id.",
   how: "u_long is the long-term profile after the signals of the previous batch; it is 0 until the first update, and stays 0 for the random condition.",
   draw(box, c) {
     box.replaceChildren();

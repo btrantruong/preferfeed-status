@@ -8,7 +8,8 @@ and bin widths), and meta.json keeps its as_of. The detail files (record_entry, 
 failure domain: a country whose detail pull fails, or all countries when DETAIL=off, keep their last published
 detail rows, marked with their own as_of in meta.files and meta.detail.
 
-Row-level files stay in OUTDIR: participants.csv, history/, detail_cache.json and spot_users.json.
+Row-level files stay in OUTDIR: participants.csv, history/ and detail_cache.json. spot_users.json (panel D) is published
+with the data when SPOT_PUBLISH is on.
 """
 import json
 import os
@@ -25,6 +26,7 @@ import db
 import detail as D
 import spot as S
 
+SPOT_FILE = "spot_users.json"
 PREV_COUNTRY_FILE = "status_bins.csv"  # the only published file of the first page version
 BIN_COLUMNS = cubes.BY_NAME["status_bins.csv"].columns
 HISTORY_COLUMNS = ["pulled_at", "machine", "launch_utc"] + BIN_COLUMNS
@@ -66,25 +68,27 @@ def make_source(cfg, reader_cls=None):
         return db.ExportSource(cfg.source[len("export:"):]), {}
     if reader_cls is None:
         reader_cls, _ = db.import_reader(cfg.pfda_dir)
-    reader, failures = db.make_reader(reader_cls, cfg.creds, cfg.creds_keys, cfg.countries, cfg.connect_timeout_s)
+    reader, failures = db.make_reader(reader_cls, cfg.creds, cfg.creds_keys, cfg.pulled_countries(), cfg.connect_timeout_s)
     return db.LiveSource(reader, cfg.params["detail_timeout_s"]), failures
 
 
 def pull(cfg, source, failures, pulled_ms):
-    """Return (visited, errors_long, status {cc: 'ok'|'failed'}, failures {cc: message})."""
+    """Return (visited, errors_long, status {cc: 'ok'|'failed'|'not_pulled'}, failures {cc: message}).
+    Only the countries of cfg.pulled_countries() are queried, each from its own launch time."""
     end = iso_utc(pulled_ms + 24 * 3600 * 1000)  # open-ended in practice; tolerates clock skew
     frames, errs = [], []
-    for cc in cfg.countries:
+    for cc in cfg.pulled_countries():
         if cc in failures:
             continue
         try:
-            v = source.core(cc, cfg.launch, end, cfg.tz)
+            v = source.core(cc, cfg.launch_of(cc), end, cfg.tz)
         except Exception as e:  # one server down must not stop the others
             failures[cc] = f"{type(e).__name__}: {str(e).splitlines()[0][:200]}"
             continue
         frames.append(v)
         errs.append(C.explode_errors(v, cc))
-    status = {cc: ("failed" if cc in failures else "ok") for cc in cfg.countries}
+    pulled = cfg.pulled_countries()
+    status = {cc: ("not_pulled" if cc not in pulled else "failed" if cc in failures else "ok") for cc in cfg.countries}
     visited = (pd.concat(frames, ignore_index=True) if frames
                else pd.DataFrame(columns=db.COLUMNS + ["country"]))
     errors_long = (pd.concat(errs, ignore_index=True) if errs else pd.DataFrame(columns=C.ERROR_COLUMNS))
@@ -177,10 +181,16 @@ def prev_as_of(prev_meta, name, cc):
     return None
 
 
-def same_basis(prev_meta, cfg, launch_iso):
-    return (prev_meta is not None and prev_meta.get("launch_utc") == launch_iso
-            and prev_meta.get("bin_minutes") == cfg.bin_minutes
-            and prev_meta.get("event_bin_minutes", cfg.params["event_bin_minutes"]) == cfg.params["event_bin_minutes"])
+def same_basis(prev_meta, cfg, launch_iso, cc=None, cc_launch_iso=None):
+    """Published data can be carried over: same bin origin and widths and, for one country, the same launch time
+    of that country (a meta without a per-country launch is read as the shared launch)."""
+    ok = (prev_meta is not None and prev_meta.get("launch_utc") == launch_iso
+          and prev_meta.get("bin_minutes") == cfg.bin_minutes
+          and prev_meta.get("event_bin_minutes", cfg.params["event_bin_minutes"]) == cfg.params["event_bin_minutes"])
+    if ok and cc is not None:
+        ok = ((prev_meta.get("countries", {}).get(cc) or {}).get("launch_utc", launch_iso)
+              == (cc_launch_iso or launch_iso))
+    return ok
 
 
 def fresh_countries(spec, core_ok, attempt_ok, detail_status, mode):
@@ -192,11 +202,12 @@ def fresh_countries(spec, core_ok, attempt_ok, detail_status, mode):
     return ok if (spec.coverage == "detail" or mode == "full") else set()
 
 
-def assemble(cfg, inputs, core_ok, attempt_ok, detail_status, prev_meta, prev_frames, launch_iso, pulled_iso):
+def assemble(cfg, inputs, core_ok, attempt_ok, detail_status, prev_meta, prev_frames, launch_iso, pulled_iso,
+             launch_cc_iso=None):
     """Build every file, add the rows carried over for countries without fresh data.
     Returns ({name: frame}, {name: {"window", "columns", "as_of"}}) for the files to write."""
     mode = cfg.params["detail"]
-    same = same_basis(prev_meta, cfg, launch_iso)
+    launch_cc_iso = launch_cc_iso or {}
     out, info = {}, {}
     for spec in cubes.REGISTRY:
         fresh = fresh_countries(spec, core_ok, attempt_ok, detail_status, mode)
@@ -204,7 +215,7 @@ def assemble(cfg, inputs, core_ok, attempt_ok, detail_status, prev_meta, prev_fr
         frame = frame[frame["country"].isin(fresh)] if not frame.empty else frame
         parts, as_of = [frame.astype(str)] if not frame.empty else [], {cc: pulled_iso for cc in fresh}
         for cc in cfg.countries:
-            if cc in fresh or not same:
+            if cc in fresh or not same_basis(prev_meta, cfg, launch_iso, cc, launch_cc_iso.get(cc)):
                 continue
             when = prev_as_of(prev_meta, spec.name, cc)
             prev = prev_frames.get(spec.name)
@@ -222,7 +233,8 @@ def assemble(cfg, inputs, core_ok, attempt_ok, detail_status, prev_meta, prev_fr
     return out, info
 
 
-def build_meta(cfg, pulled_ms, launch_at_ms, status, detail_status, detail_prev, files_info, participants):
+def build_meta(cfg, pulled_ms, launch_at_ms, status, detail_status, detail_prev, files_info, participants,
+               launch_cc_iso=None, spot=None):
     pulled_iso = iso_utc(pulled_ms)
     n_by_c = participants.groupby("country").size().to_dict() if not participants.empty else {}
     countries = {}
@@ -230,7 +242,8 @@ def build_meta(cfg, pulled_ms, launch_at_ms, status, detail_status, detail_prev,
         ok = status[cc] == "ok"
         countries[cc] = {"status": status[cc], "as_of": pulled_iso if ok else files_info.get(
             cubes.REGISTRY[0].name, {}).get("as_of", {}).get(cc),
-            "n": int(n_by_c.get(cc, 0)) if ok else None}
+            "n": int(n_by_c.get(cc, 0)) if ok else None,
+            "launch_utc": (launch_cc_iso or {}).get(cc) or iso_utc(launch_at_ms)}
     detail = {cc: {"status": detail_status.get(cc, "off"),
                    "as_of": pulled_iso if detail_status.get(cc) == "ok" else detail_prev.get(cc)}
               for cc in cfg.countries}
@@ -257,6 +270,7 @@ def build_meta(cfg, pulled_ms, launch_at_ms, status, detail_status, detail_prev,
         "params": {k.lower(): cfg.params[k.lower()] for k in __import__("config").PAGE_PARAMS},
         "flow_nodes": cubes.FLOW_NODES,
         "files": files_info,
+        "spot": spot,   # panel D: {"as_of", "n_users"} of the published spot_users.json, or None
     }
 
 
@@ -267,14 +281,15 @@ def append_history(outdir, bins, pulled_iso, machine, launch_iso):
     rows.to_csv(path, mode="a", header=not os.path.isfile(path), index=False)
 
 
-# ---- spot check (local only) -------------------------------------------------------------------------
+# ---- spot check (panel D) ----------------------------------------------------------------------------
 def write_spot(cfg, source, P, ex_all, detail_status, outdir):
-    """OUTDIR/spot_users.json for the listed participants, or a note why it was not written. Never published."""
+    """OUTDIR/spot_users.json for the listed participants. Returns (note, n_users): n_users is 0 when nothing was
+    written or the list is empty. The file is published only if SPOT_PUBLISH is on (publish.py)."""
     path = os.path.join(outdir, "spot_users.json")
     if cfg.params["detail"] == "off":
-        return "off"
+        return "off", 0
     if not cfg.inventory_file or not os.path.isfile(cfg.inventory_file):
-        return "no INVENTORY_FILE"
+        return "no INVENTORY_FILE", 0
     picks, rows, info = {}, {}, {}
     try:
         for cc in cfg.countries:
@@ -291,15 +306,16 @@ def write_spot(cfg, source, P, ex_all, detail_status, outdir):
             rows[cc] = source.spot(cc, ids)
         if not picks:
             write_atomic(path, json.dumps({"users": [], "posts": {}, "inventory": {}, "dims": S.PROFILE_DIMS}))
-            return "no participants"
+            return "no participants", 0
         inv_all = pd.read_parquet(cfg.inventory_file, columns=["post_id", "country", "platform", "text"]
                                   + S.PROFILE_DIMS).drop_duplicates("post_id").set_index("post_id")
         inv = {cc: inv_all[inv_all["country"] == cc] for cc in picks}
         data = S.build_spot(picks, rows, inv, cfg.params, S.file_sha256(cfg.inventory_file))
         write_atomic(path, json.dumps(data, allow_nan=False))
-        return f"{len(data['users'])} participants"
+        note = f"{len(data['users'])} participants"
+        return note + (f" (dwell not matched to a batch: {data['dwell_unmatched']})" if data["dwell_unmatched"] else ""), len(data["users"])
     except Exception as e:  # the spot check must never fail a pull
-        return f"failed: {type(e).__name__}"
+        return f"failed: {type(e).__name__}", 0
 
 
 # ---- one run -----------------------------------------------------------------------------------------
@@ -310,9 +326,11 @@ def run(cfg, pulled_ms=None, reader_cls=None):
                      else int(datetime.now(timezone.utc).timestamp() * 1000))
     launch_at_ms = launch_ms(cfg.launch, cfg.tz)
     launch_iso = iso_utc(launch_at_ms)
+    launch_cc = {cc: launch_ms(cfg.launch_of(cc), cfg.tz) for cc in cfg.countries}
+    launch_cc_iso = {cc: iso_utc(v) for cc, v in launch_cc.items()}
     source, failures = make_source(cfg, reader_cls)
     visited, errors_long, status, failures = pull(cfg, source, failures, pulled_ms)
-    if all(s == "failed" for s in status.values()):
+    if not any(s == "ok" for s in status.values()):
         raise NoDataError(f"no server returned data: {failures}")
     core_ok = [cc for cc, s in status.items() if s == "ok"]
 
@@ -322,7 +340,7 @@ def run(cfg, pulled_ms=None, reader_cls=None):
     os.makedirs(cfg.outdir, exist_ok=True)
     cache = D.load_cache(cfg.outdir)
     end_ms = pulled_ms + 24 * 3600 * 1000
-    results, detail_status, detail_errors = D.run(cfg, source, P, launch_at_ms, end_ms, pulled_ms, core_ok, cache)
+    results, detail_status, detail_errors = D.run(cfg, source, P, launch_at_ms, end_ms, pulled_ms, core_ok, cache, launch_cc)
     if results:
         D.save_cache(cfg.outdir, cache)
     P = apply_attempts(P, errors_long, cfg, results)
@@ -336,10 +354,17 @@ def run(cfg, pulled_ms=None, reader_cls=None):
     attempt_ok = [cc for cc in core_ok if P[P["country"] == cc].empty or P.loc[P["country"] == cc, "attempt"].notna().any()]
     prev_meta, prev_frames = previous_published(cfg.site_dir)
     frames, files_info = assemble(cfg, inputs, core_ok, attempt_ok, detail_status, prev_meta, prev_frames,
-                                  launch_iso, iso_utc(pulled_ms))
-    detail_prev = {cc: ((prev_meta or {}).get("detail", {}).get(cc) or {}).get("as_of") for cc in cfg.countries} \
-        if same_basis(prev_meta, cfg, launch_iso) else {}
-    meta = build_meta(cfg, pulled_ms, launch_at_ms, status, detail_status, detail_prev, files_info, classified)
+                                  launch_iso, iso_utc(pulled_ms), launch_cc_iso)
+    detail_prev = {cc: ((prev_meta or {}).get("detail", {}).get(cc) or {}).get("as_of") for cc in cfg.countries
+                   if same_basis(prev_meta, cfg, launch_iso, cc, launch_cc_iso.get(cc))}
+    spot_note, n_spot = write_spot(cfg, source, P, ex_all, detail_status, cfg.outdir)
+    published = cfg.params["spot_publish"] == "on"
+    if n_spot and published:
+        spot_info = {"as_of": iso_utc(pulled_ms), "n_users": n_spot}
+    else:   # nothing new: a copy published earlier stays (SPOT_PUBLISH on) or is removed (off)
+        spot_info = (prev_meta or {}).get("spot") if published else None
+    meta = build_meta(cfg, pulled_ms, launch_at_ms, status, detail_status, detail_prev, files_info, classified,
+                      launch_cc_iso, spot_info)
 
     paths, sizes = {}, {}
     for name, frame in frames.items():
@@ -349,12 +374,17 @@ def run(cfg, pulled_ms=None, reader_cls=None):
     meta_path = os.path.join(cfg.outdir, "meta.json")
     write_atomic(meta_path, json.dumps(meta, indent=1) + "\n")
     write_atomic(os.path.join(cfg.outdir, "participants.csv"), P.drop(columns=["attempt"]).to_csv(index=False))
-    spot_note = write_spot(cfg, source, P, ex_all, detail_status, cfg.outdir)
+    remove = []
+    if published and n_spot:
+        paths[SPOT_FILE] = os.path.join(cfg.outdir, SPOT_FILE)
+        sizes[SPOT_FILE] = os.path.getsize(paths[SPOT_FILE])
+    elif not published:
+        remove.append(SPOT_FILE)
     if PREV_COUNTRY_FILE in frames:
         append_history(cfg.outdir, frames[PREV_COUNTRY_FILE], meta["pulled_at"], cfg.machine, meta["launch_utc"])
     return {"meta": meta, "meta_path": meta_path, "files": paths, "bins_path": paths.get(PREV_COUNTRY_FILE),
             "participants": classified, "failures": failures, "detail_status": detail_status,
-            "detail_errors": detail_errors, "sizes": sizes, "spot": spot_note}
+            "detail_errors": detail_errors, "sizes": sizes, "spot": spot_note, "remove": remove}
 
 
 def summary_table(result):
@@ -367,7 +397,7 @@ def summary_table(result):
         row = {"country": cc, "status": info["status"], "n": len(sub)}
         for s in C.STATUSES:
             row[s] = int((sub["status"] == s).sum()) if not sub.empty else 0
-        if info["status"] == "failed":
+        if info["status"] != "ok":
             row.update({"n": None, **{s: None for s in C.STATUSES}})
         rows.append(row)
     df = pd.DataFrame(rows)

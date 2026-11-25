@@ -26,7 +26,8 @@ OPTIONAL_COLUMNS = ["condition", "started", "viewed_posts", "attempt"]
 COLUMNS = REQUIRED_COLUMNS + OPTIONAL_COLUMNS
 EXCHANGE_COLUMNS = ["user_id", "endpoint", "algo_type", "timestamp_server", "request_index", "phase"]
 SPOT_COLUMNS = ["user_id", "endpoint", "timestamp_server", "request_index", "phase", "draw",
-                "n_batches_served", "u_long", "served_post_ids", "inventory_sha256"]
+                "n_batches_served", "u_long", "served_post_ids", "signal_post_ids", "dwell_times", "signal_batch",
+                "inventory_sha256"]
 
 # ---- SQL (all SELECT) ------------------------------------------------------------------------------
 SQL_COLUMNS = ("SELECT column_name FROM information_schema.columns WHERE table_name = :t")
@@ -49,6 +50,8 @@ SQL_SPOT = ("SELECT a.user_id, a.endpoint, a.timestamp_server, "
             "a.algo_state->>'phase' AS phase, a.algo_state->>'draw' AS draw, "
             "NULLIF(a.algo_state->>'n_batches_served', '')::int AS n_batches_served, "
             "a.algo_state->'u_long' AS u_long, a.served_post_ids AS served_post_ids, "
+            "a.signal_post_ids AS signal_post_ids, a.dwell_times AS dwell_times, "
+            "NULLIF(a.algo_state->>'signal_batch', '')::int AS signal_batch, "
             "a.algo_state->'inventory'->>'file_sha256' AS inventory_sha256 "
             "FROM algo_exchange a WHERE a.user_id = ANY(:uids) ORDER BY a.user_id, a.timestamp_server, a.id")
 ALL_SQL = [SQL_COLUMNS, SQL_ID_RANGE, SQL_ID_PROBE, SQL_EXCHANGES, SQL_RECORD_COUNTS, SQL_ACTIVE, SQL_SPOT]
@@ -234,6 +237,8 @@ class LiveSource:
         df = self.query(cc, SQL_SPOT, {"uids": [int(u) for u in uids]})
         df["u_long"] = df["u_long"].map(parse_json)
         df["served_post_ids"] = df["served_post_ids"].map(parse_json)
+        df["signal_post_ids"] = df["signal_post_ids"].map(parse_json)
+        df["dwell_times"] = df["dwell_times"].map(parse_json)
         return df
 
 
@@ -295,4 +300,7 @@ class ExportSource:
             "n_batches_served": state.map(lambda d: d.get("n_batches_served")).to_numpy(),
             "u_long": state.map(lambda d: d.get("u_long")).to_numpy(),
             "served_post_ids": ex["served_post_ids"].map(parse_json).to_numpy(),
+            "signal_post_ids": (ex["signal_post_ids"].map(parse_json) if "signal_post_ids" in ex else pd.Series([None] * len(ex))).to_numpy(),
+            "dwell_times": (ex["dwell_times"].map(parse_json) if "dwell_times" in ex else pd.Series([None] * len(ex))).to_numpy(),
+            "signal_batch": state.map(lambda d: d.get("signal_batch")).to_numpy(),
             "inventory_sha256": state.map(lambda d: (d.get("inventory") or {}).get("file_sha256")).to_numpy()})
