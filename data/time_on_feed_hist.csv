@@ -4,10 +4,10 @@ bin_start,country,condition,measure,group,dur_bin,n,sum_min
 2026-11-25T08:45:00Z,UK,RANDOM,total,not_done,6,1,5.762
 2026-11-25T09:00:00Z,UK,ATTENTION,final_attempt,done,10,1,9.942
 2026-11-25T09:00:00Z,UK,ATTENTION,final_attempt,done,8,2,14.616
-2026-11-25T09:00:00Z,UK,ATTENTION,final_attempt,not_done,0,1,0.089
+2026-11-25T09:00:00Z,UK,ATTENTION,final_attempt,not_done,2,1,1.755
 2026-11-25T09:00:00Z,UK,ATTENTION,total,done,10,1,9.942
 2026-11-25T09:00:00Z,UK,ATTENTION,total,done,8,2,14.616
-2026-11-25T09:00:00Z,UK,ATTENTION,total,not_done,10,1,9.187
+2026-11-25T09:00:00Z,UK,ATTENTION,total,not_done,11,1,10.853
 2026-11-25T09:00:00Z,UK,PREFERENCE,final_attempt,done,10,1,9.958
 2026-11-25T09:00:00Z,UK,PREFERENCE,total,done,10,1,9.958
 2026-11-25T09:00:00Z,UK,RANDOM,final_attempt,done,10,1,9.979
