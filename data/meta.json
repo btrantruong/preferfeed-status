@@ -1,9 +1,10 @@
 {
- "pulled_at": "2026-11-24T23:06:37Z",
+ "pulled_at": "2026-11-25T08:33:02Z",
  "launch": "2026-11-25T09:30:00+01:00",
  "launch_utc": "2026-11-25T08:30:00Z",
  "tz": "Europe/Berlin",
  "bin_minutes": 15,
+ "event_bin_minutes": 5,
  "session_min": 15,
  "ignore_codes": [
   "NOT_FOUND"
@@ -18,7 +19,7 @@
  "stale_after_min": null,
  "refresh_min": 2.0,
  "scripts_url": "https://github.com/btrantruong/preferfeed-status/tree/main/pipeline",
- "code_version": "05f8815",
+ "code_version": "4571f10",
  "categories": [
   {
    "status": "done",
@@ -56,23 +57,177 @@
  "countries": {
   "UK": {
    "status": "ok",
-   "as_of": "2026-11-24T23:06:37Z",
+   "as_of": "2026-11-25T08:33:02Z",
    "n": 0
   },
   "DE": {
    "status": "ok",
-   "as_of": "2026-11-24T23:06:37Z",
+   "as_of": "2026-11-25T08:33:02Z",
    "n": 0
   },
   "FR": {
    "status": "ok",
-   "as_of": "2026-11-24T23:06:37Z",
+   "as_of": "2026-11-25T08:33:02Z",
    "n": 0
   },
   "PL": {
    "status": "ok",
-   "as_of": "2026-11-24T23:06:37Z",
+   "as_of": "2026-11-25T08:33:02Z",
    "n": 0
+  }
+ },
+ "detail_mode": "off",
+ "detail": {
+  "UK": {
+   "status": "off",
+   "as_of": null
+  },
+  "DE": {
+   "status": "off",
+   "as_of": null
+  },
+  "FR": {
+   "status": "off",
+   "as_of": null
+  },
+  "PL": {
+   "status": "off",
+   "as_of": null
+  }
+ },
+ "params": {
+  "event_bin_minutes": 5,
+  "flag_bin_minutes": 60,
+  "min_n_rate": 5,
+  "records_bin_width": 2000,
+  "records_max": 50000,
+  "requests_max": 40,
+  "batch_size": 5,
+  "diff_range": 10,
+  "attempts_max": 4,
+  "error_age_bin_min": 1,
+  "error_age_max_min": 20,
+  "server_error_code": "SERVER_ERROR",
+  "client_error_codes": [
+   "CLIENT_TRACKING_SEND_FAILED",
+   "CLIENT_FEED_INIT_FAILED",
+   "CLIENT_FEED_BATCH_LOAD_FAILED"
+  ],
+  "flow_steps": 4,
+  "warmup_max_index": 10,
+  "spot_max_users": 30
+ },
+ "flow_nodes": [
+  "SERVER_ERROR",
+  "NOT_FOUND",
+  "DUPLICATE_PARTICIPATION_ATTEMPT",
+  "PAGE_RELOAD_DETECTED",
+  "IDLE_DETECTED",
+  "client failure",
+  "AUTOMATED_BROWSER_DETECTED",
+  "TIMELINE_RESTARTED"
+ ],
+ "files": {
+  "status_bins.csv": {
+   "window": "created",
+   "columns": [
+    "bin_start",
+    "country",
+    "status",
+    "reason",
+    "n"
+   ],
+   "as_of": {
+    "DE": "2026-11-25T08:33:02Z",
+    "PL": "2026-11-25T08:33:02Z",
+    "FR": "2026-11-25T08:33:02Z",
+    "UK": "2026-11-25T08:33:02Z"
+   }
+  },
+  "status_detail.csv": {
+   "window": "created",
+   "columns": [
+    "bin_start",
+    "country",
+    "condition",
+    "started",
+    "has_server_error",
+    "status",
+    "reason",
+    "n"
+   ],
+   "as_of": {
+    "DE": "2026-11-25T08:33:02Z",
+    "PL": "2026-11-25T08:33:02Z",
+    "FR": "2026-11-25T08:33:02Z",
+    "UK": "2026-11-25T08:33:02Z"
+   }
+  },
+  "attempts.csv": {
+   "window": "created",
+   "columns": [
+    "bin_start",
+    "country",
+    "status",
+    "attempts",
+    "after_stop",
+    "n"
+   ],
+   "as_of": {
+    "FR": "2026-11-25T08:33:02Z",
+    "PL": "2026-11-25T08:33:02Z",
+    "UK": "2026-11-25T08:33:02Z",
+    "DE": "2026-11-25T08:33:02Z"
+   }
+  },
+  "errors_time.csv": {
+   "window": "event",
+   "columns": [
+    "bin_start",
+    "country",
+    "code",
+    "detail",
+    "n"
+   ],
+   "as_of": {
+    "DE": "2026-11-25T08:33:02Z",
+    "PL": "2026-11-25T08:33:02Z",
+    "FR": "2026-11-25T08:33:02Z",
+    "UK": "2026-11-25T08:33:02Z"
+   }
+  },
+  "errors_age.csv": {
+   "window": "created",
+   "columns": [
+    "bin_start",
+    "country",
+    "code",
+    "age_bin",
+    "n"
+   ],
+   "as_of": {
+    "DE": "2026-11-25T08:33:02Z",
+    "PL": "2026-11-25T08:33:02Z",
+    "FR": "2026-11-25T08:33:02Z",
+    "UK": "2026-11-25T08:33:02Z"
+   }
+  },
+  "error_flow.csv": {
+   "window": "created",
+   "columns": [
+    "bin_start",
+    "country",
+    "step",
+    "from_node",
+    "to_node",
+    "n"
+   ],
+   "as_of": {
+    "DE": "2026-11-25T08:33:02Z",
+    "PL": "2026-11-25T08:33:02Z",
+    "FR": "2026-11-25T08:33:02Z",
+    "UK": "2026-11-25T08:33:02Z"
+   }
   }
  }
 }
