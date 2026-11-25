@@ -1,5 +1,10 @@
 bin_start,country,condition,started,has_server_error,status,reason,n
 2026-11-25T08:45:00Z,UK,ATTENTION,1,0,incomplete,no_error,1
 2026-11-25T08:45:00Z,UK,RANDOM,1,0,incomplete,error_logged,1
-2026-11-25T09:00:00Z,UK,ATTENTION,1,0,incomplete,in_session,2
-2026-11-25T09:00:00Z,UK,RANDOM,1,0,incomplete,in_session,1
+2026-11-25T09:00:00Z,UK,ATTENTION,1,0,done,done,3
+2026-11-25T09:00:00Z,UK,ATTENTION,1,0,incomplete,in_session,1
+2026-11-25T09:00:00Z,UK,PREFERENCE,1,0,incomplete,in_session,1
+2026-11-25T09:00:00Z,UK,RANDOM,1,0,done,done,2
+2026-11-25T09:15:00Z,UK,ATTENTION,1,0,incomplete,in_session,1
+2026-11-25T09:15:00Z,UK,PREFERENCE,1,0,incomplete,in_session,3
+2026-11-25T09:15:00Z,UK,RANDOM,1,0,incomplete,in_session,3
