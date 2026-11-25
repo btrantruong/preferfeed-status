@@ -59,4 +59,7 @@ bin_start,country,endpoint,n
 2026-11-25T11:35:00Z,UK,init,1
 2026-11-25T11:40:00Z,UK,init,1
 2026-11-25T11:40:00Z,UK,next_batch,4
-2026-11-25T11:45:00Z,UK,next_batch,3
+2026-11-25T11:45:00Z,UK,next_batch,4
+2026-11-25T11:50:00Z,UK,init,1
+2026-11-25T11:50:00Z,UK,next_batch,4
+2026-11-25T11:55:00Z,UK,next_batch,3
