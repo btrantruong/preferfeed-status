@@ -6,7 +6,8 @@ bin_start,country,attempt_no,ends_as,dur_bin,n,sum_min
 2026-11-25T09:00:00Z,UK,1,done,8,3,21.645
 2026-11-25T09:00:00Z,UK,1,restarted,5,1,4.925
 2026-11-25T09:00:00Z,UK,2,restarted,2,1,1.666
-2026-11-25T09:00:00Z,UK,3,incomplete,3,1,2.507
+2026-11-25T09:00:00Z,UK,3,restarted,3,1,2.507
+2026-11-25T09:00:00Z,UK,4,incomplete,0,1,0.089
 2026-11-25T09:15:00Z,UK,1,done,10,2,19.612
 2026-11-25T09:15:00Z,UK,1,done,11,4,40.072
 2026-11-25T09:15:00Z,UK,1,done,16,1,47.377
@@ -57,4 +58,4 @@ bin_start,country,attempt_no,ends_as,dur_bin,n,sum_min
 2026-11-25T11:15:00Z,UK,1,incomplete,3,1,2.506
 2026-11-25T11:30:00Z,UK,1,done,8,2,14.381
 2026-11-25T11:45:00Z,UK,1,done,7,1,6.965
-2026-11-25T12:00:00Z,UK,1,incomplete,6,1,5.217
+2026-11-25T12:00:00Z,UK,1,done,11,1,10.409
