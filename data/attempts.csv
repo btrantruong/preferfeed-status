@@ -36,4 +36,6 @@ bin_start,country,status,attempts,after_stop,n
 2026-11-25T16:30:00Z,UK,incomplete,1,0,1
 2026-11-25T16:45:00Z,UK,incomplete,1,0,1
 2026-11-25T18:00:00Z,UK,incomplete,1,0,1
-2026-11-25T18:15:00Z,UK,incomplete,1,0,2
+2026-11-25T18:15:00Z,UK,done,1,0,1
+2026-11-25T18:15:00Z,UK,incomplete,1,0,1
+2026-11-25T18:30:00Z,UK,incomplete,1,0,1
