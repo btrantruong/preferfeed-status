@@ -38,3 +38,4 @@ bin_start,country,condition,started,has_server_error,status,reason,n
 2026-11-25T11:30:00Z,UK,ATTENTION,1,0,done,done,2
 2026-11-25T11:45:00Z,UK,ATTENTION,1,0,done,done,1
 2026-11-25T12:00:00Z,UK,PREFERENCE,1,0,done,done,1
+2026-11-25T12:30:00Z,UK,PREFERENCE,1,0,cancelled,reload,1

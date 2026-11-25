@@ -23,3 +23,4 @@ bin_start,country,status,reason,n
 2026-11-25T11:30:00Z,UK,done,done,2
 2026-11-25T11:45:00Z,UK,done,done,1
 2026-11-25T12:00:00Z,UK,done,done,1
+2026-11-25T12:30:00Z,UK,cancelled,reload,1
