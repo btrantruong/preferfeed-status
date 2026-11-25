@@ -76,14 +76,21 @@ def main(argv=None):
         for cc, err in result["failures"].items():
             as_of = meta["countries"][cc]["as_of"]
             print(f"failed {cc}: {err} (page keeps data as of {as_of})")
+        print(f"detail ({cfg.params['detail']}): " + ", ".join(f"{c} {s}" for c, s in result["detail_status"].items()))
+        for cc, err in result["detail_errors"].items():
+            print(f"detail failed {cc}: {err} (detail files keep that country's last published rows)")
+        print(f"spot check (local only): {result['spot']}")
+        big = [f"{n} {sz // 1024} KB" for n, sz in result["sizes"].items() if sz > cfg.params["max_file_kb"] * 1024]
+        print("file sizes: " + ", ".join(f"{n} {sz / 1024:.0f} KB" for n, sz in result["sizes"].items()))
+        if big:
+            print(f"warning: larger than MAX_FILE_KB={cfg.params['max_file_kb']}: {', '.join(big)}")
         print(f"files: {cfg.outdir}")
 
         if args.no_push:
             print("--no-push: not published")
         else:
             try:
-                commit = publish.publish(cfg, result["bins_path"], result["meta_path"],
-                                         meta["pulled_at"])
+                commit = publish.publish(cfg, result["files"], result["meta_path"], meta["pulled_at"])
                 record["pushed"], record["commit"] = True, commit
                 print(f"published commit {commit}")
             except publish.PublishError as e:

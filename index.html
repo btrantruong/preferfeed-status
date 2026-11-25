@@ -20,6 +20,8 @@
   --s-incomplete: #1baf7a;
   --warn-bg: #fff4d6;
   --warn-text: #5c4300;
+  --c1: #2a78d6; --c2: #eb6834; --c3: #1baf7a; --c4: #eda100; --c5: #e87ba4; --c6: #008300; --c7: #6250d6; --c8: #e34948;
+  --ink-on-fill: #ffffff;
 }
 @media (prefers-color-scheme: dark) {
   :root:where(:not([data-theme="light"])) {
@@ -37,6 +39,7 @@
     --s-incomplete: #199e70;
     --warn-bg: #3a2f10;
     --warn-text: #f5dc9a;
+    --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; --c5: #d55181; --c6: #0ca30c; --c7: #9085e9; --c8: #e66767;
   }
 }
 :root[data-theme="dark"] {
@@ -54,6 +57,7 @@
   --s-incomplete: #199e70;
   --warn-bg: #3a2f10;
   --warn-text: #f5dc9a;
+  --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; --c5: #d55181; --c6: #0ca30c; --c7: #9085e9; --c8: #e66767;
 }
 * { box-sizing: border-box; }
 body {
@@ -82,15 +86,56 @@ details.info .body li { margin: 4px 0; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
 .refresh { display: inline-flex; gap: 10px; align-items: center; font-size: 14px; color: var(--text-secondary); }
 .refresh button { font: inherit; padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-1); color: var(--text-primary); cursor: pointer; }
-.range { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; align-items: center; font-size: 14px; color: var(--text-secondary); width: 100%; }
-.range input[type=range] { width: 100%; accent-color: var(--accent); }
-.range output { font-variant-numeric: tabular-nums; color: var(--text-primary); min-width: 9.5em; }
+.range2 { margin-top: 14px; }
+.range2 .labels { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; color: var(--text-secondary); margin-bottom: 8px; flex-wrap: wrap; }
+.range2 .labels b { color: var(--text-primary); font-weight: 600; font-variant-numeric: tabular-nums; }
+.track2 { position: relative; height: 6px; margin: 14px 11px 18px; background: var(--grid); border-radius: 3px; touch-action: none; cursor: pointer; }
+.track2::before { content: ""; position: absolute; inset: -12px -11px; }
+.band2 { position: absolute; top: 0; bottom: 0; background: var(--accent); border-radius: 3px; pointer-events: none; }
+.thumb2 { position: absolute; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: var(--surface-1);
+  border: 2px solid var(--accent); box-shadow: 0 1px 4px rgba(0,0,0,.25); cursor: grab; touch-action: none; }
+.thumb2.drag { cursor: grabbing; }
+.thumb2:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.panel { margin-top: 18px; }
+.panel > h2 { font-size: 16px; margin: 0 0 2px; }
+.pager { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 4px 0 6px; font-size: 14px; color: var(--text-secondary); }
+.pager button { font: inherit; padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-1); color: var(--text-primary); cursor: pointer; min-height: 32px; }
+.pager button[disabled] { opacity: .4; cursor: default; }
+.pager .dots { display: inline-flex; gap: 4px; }
+.pager .dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--text-muted); background: transparent; padding: 0; min-height: 0; }
+.pager .dot[aria-current="true"] { background: var(--accent); border-color: var(--accent); }
+.page-title { font-size: 15px; font-weight: 600; margin: 4px 0 0; color: var(--text-primary); }
+.page-title .group { font-weight: 400; color: var(--text-muted); }
+.caption { font-size: 13px; color: var(--text-secondary); margin: 6px 0 0; }
+.how { font-size: 13px; color: var(--text-muted); margin: 4px 0 0; }
+.cov { font-size: 12px; color: var(--warn-text); background: var(--warn-bg); border-radius: 4px; padding: 3px 8px; margin: 6px 0 0; display: inline-block; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px 16px; }
+.small-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin: 4px 0 0; display: flex; align-items: center; gap: 6px; }
+.ibtn { display: inline-flex; width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--text-muted); color: var(--text-muted); background: transparent;
+  align-items: center; justify-content: center; font: 700 11px/1 Georgia, serif; padding: 0; cursor: pointer; flex: none; }
+.ibtn:hover, .ibtn:focus-visible, .ibtn[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); }
+.pop { position: fixed; z-index: 20; max-width: 320px; background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 10px; font-size: 13px; line-height: 1.4; box-shadow: 0 4px 16px rgba(0,0,0,.18); }
+.postcard { position: fixed; z-index: 30; width: min(460px, calc(100vw - 24px)); max-height: min(70vh, 560px); overflow: auto; background: var(--surface-1); color: var(--text-primary);
+  border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 13px; line-height: 1.4; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
+.postcard .hd { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; color: var(--text-secondary); }
+.postcard .post { border-top: 1px solid var(--grid); padding: 6px 0; }
+.postcard .vec { font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+.postcard .txt { white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 2px; }
+.postcard .warn { font-size: 12px; margin: 4px 0; }
+@media (max-width: 560px) { .postcard { left: 12px !important; right: 12px; top: auto !important; bottom: 12px; width: auto; max-height: 55vh; } }
+.userbar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin: 6px 0; font-size: 14px; color: var(--text-secondary); }
+.userbar select { font: inherit; max-width: 100%; padding: 4px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-1); color: var(--text-primary); }
+.flowlabel { font-size: 11px; }
 .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-top: 14px; }
 .card h2 { font-size: 15px; margin: 0 0 2px; }
 .card .note { font-size: 13px; color: var(--text-muted); margin: 0 0 8px; }
 .chart { position: relative; width: 100%; }
 .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
 .chart text { fill: var(--text-muted); font-size: 12px; }
+.chart svg .t-ink { fill: var(--text-primary); }
+.chart svg .t-sec { fill: var(--text-secondary); }
 .tip { position: absolute; pointer-events: none; background: var(--surface-0); border: 1px solid var(--border); border-radius: 6px;
   padding: 6px 8px; font-size: 13px; color: var(--text-primary); white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,.12); display: none; }
 .tip .muted { color: var(--text-muted); }
@@ -110,8 +155,7 @@ tr.total td { font-weight: 600; border-bottom: 0; }
 footer { margin-top: 24px; font-size: 12px; color: var(--text-muted); }
 a { color: var(--accent); }
 @media (max-width: 560px) {
-  .range { grid-template-columns: auto 1fr; }
-  .range output { grid-column: 2; min-width: 0; }
+  .grid2 { grid-template-columns: 1fr; }
   .bar-cell { display: none; }
 }
 </style>
@@ -135,28 +179,22 @@ a { color: var(--accent); }
       <button id="refresh" type="button">Refresh</button>
       <label><input type="checkbox" id="auto"> auto-refresh every <span id="refresh-min">2</span> min</label>
     </div>
-    <div class="range" id="range">
-      <label for="from">From</label><input type="range" id="from" min="0" max="0" step="1" value="0"><output id="from-out"></output>
-      <label for="to">To</label><input type="range" id="to" min="0" max="0" step="1" value="0"><output id="to-out"></output>
-    </div>
   </div>
 
-  <section class="card">
+  <section class="card" id="top">
     <h2 id="c1-title">Participants since launch</h2>
     <p class="note" id="c1-note"></p>
     <div class="chart" id="c1"><div class="tip" id="tip1"></div></div>
+    <div class="range2" id="range2">
+      <div class="labels"><span>From <b id="from-out"></b></span><span>To <b id="to-out"></b></span></div>
+      <div id="slider"></div>
+    </div>
   </section>
 
-  <section class="card">
-    <h2>Status of these participants at the last pull</h2>
-    <p class="note" id="c2-note"></p>
-    <div class="chart" id="c2"><div class="tip" id="tip2"></div></div>
-    <div class="legend" id="legend2"></div>
-    <div id="table2"></div>
-  </section>
+  <div id="panels"></div>
 
   <footer id="footer"></footer>
 </main>
-<script src="app.js"></script>
+<script type="module" src="js/main.js"></script>
 </body>
 </html>

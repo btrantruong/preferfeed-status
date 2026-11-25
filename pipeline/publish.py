@@ -1,10 +1,15 @@
-"""Git steps: update the clone before a run, and commit + push the two data files after it."""
+"""Git steps: update the clone before a run, and commit + push the data files after it.
+
+The data files are the files of cubes.REGISTRY that the run produced, plus meta.json. Nothing else is ever
+copied: participants.csv, history/, detail_cache.json and spot_users.json stay in OUTDIR."""
 import os
 import shutil
 import subprocess
 import time
 
-DATA_FILES = ["status_bins.csv", "meta.json"]
+import cubes
+
+DATA_FILES = cubes.FILE_NAMES + ["meta.json"]  # the only names that may be copied into data/
 
 
 class PublishError(RuntimeError):
@@ -38,8 +43,14 @@ def minutes_since_last_data_push(site_dir, remote, branch):
     return (time.time() - int(out)) / 60
 
 
-def publish(cfg, bins_path, meta_path, pulled_at, warn=print):
-    """Copy the data files into the clone, commit only them, push. Returns the commit hash."""
+def publish(cfg, files, meta_path, pulled_at, warn=print):
+    """Copy the data files into the clone, commit only them, push. Returns the commit hash.
+    files: {file name: path} of the produced registry files (names outside the registry are refused)."""
+    copy = dict(files)
+    copy["meta.json"] = meta_path
+    outside = [n for n in copy if n not in DATA_FILES]
+    if outside:
+        raise PublishError(f"not a data file of the registry: {outside}")
     site = cfg.site_dir
     if current_branch(site) != cfg.git_branch:
         raise PublishError(f"clone is not on {cfg.git_branch}; not publishing")
@@ -49,9 +60,9 @@ def publish(cfg, bins_path, meta_path, pulled_at, warn=print):
              f"{cfg.min_push_gap_min:g}); GitHub Pages allows about 10 builds per hour")
     data_dir = os.path.join(site, "data")
     os.makedirs(data_dir, exist_ok=True)
-    for src, name in zip([bins_path, meta_path], DATA_FILES):
+    for name, src in copy.items():
         shutil.copyfile(src, os.path.join(data_dir, name))
-    paths = [f"data/{n}" for n in DATA_FILES]
+    paths = [f"data/{n}" for n in copy]
     git(site, "add", "--", *paths)
     msg = f"data: pulled_at {pulled_at} ({cfg.machine})"
     r = git(site, "commit", "--quiet", "-m", msg, "--", *paths, check=False)

@@ -1,0 +1,7 @@
+{
+  "name": "preferfeed-status-page",
+  "private": true,
+  "type": "module",
+  "description": "Plain ES modules for the status page; node --test runs js/tests (no dependencies).",
+  "scripts": { "test": "node --test js/tests/*.test.js" }
+}

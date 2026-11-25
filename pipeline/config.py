@@ -1,6 +1,6 @@
 """Load the run configuration: config.env (shared), config.local.env (per machine), --set overrides."""
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 SHARED_FILE = "config.env"
 LOCAL_FILE = "config.local.env"
@@ -10,6 +10,57 @@ SHARED_KEYS = ["LAUNCH", "TZ", "COUNTRIES", "CREDS_KEYS", "BIN_MINUTES", "SESSIO
                "STALE_AFTER_MIN", "REFRESH_MIN", "CONNECT_TIMEOUT_S", "MIN_PUSH_GAP_MIN",
                "SCRIPTS_URL", "GIT_REMOTE", "GIT_BRANCH"]
 LOCAL_KEYS = ["MACHINE", "PFDA_DIR", "CREDS", "OUTDIR"]
+# Optional per-machine keys (default in the second column; empty string = not set).
+OPTIONAL_LOCAL_KEYS = {"INVENTORY_FILE": "", "SOURCE": "live", "PULLED_AT": ""}
+
+# Chart and detail-pull parameters: key -> (kind, default). config.env may set any of them; a key that is
+# missing there takes the default, so an older config.env keeps working. They are copied to meta.json
+# ("params") so that the page holds no constants.
+PARAM_SPEC = {
+    "EVENT_BIN_MINUTES": ("int", 5),        # bins of the event charts; must divide BIN_MINUTES
+    "FLAG_BIN_MINUTES": ("int", 60),        # bins of dc1; a multiple of BIN_MINUTES
+    "MIN_N_RATE": ("int", 5),               # dc1: hours with fewer done participants are drawn faded
+    "RECORDS_BIN_WIDTH": ("int", 2000),     # dc2
+    "RECORDS_MAX": ("int", 50000),          # dc2: open last bin; a multiple of RECORDS_BIN_WIDTH
+    "REQUESTS_MAX": ("int", 40),            # dc3: open last bin
+    "BATCH_SIZE": ("int", 5),               # posts per batch (timeline config)
+    "DIFF_RANGE": ("int", 10),              # dc3: requests minus viewed_posts / BATCH_SIZE, open ends at +-
+    "ATTEMPTS_MAX": ("int", 4),             # cs2: this many starts and more share one bin
+    "ATTEMPT_MARGIN_S": ("int", 10),        # records of the final attempt start this long before its init
+    "ERROR_AGE_BIN_MIN": ("int", 1),        # se3
+    "ERROR_AGE_MAX_MIN": ("int", 20),       # se3: open last bin; a multiple of ERROR_AGE_BIN_MIN
+    "SERVER_ERROR_CODE": ("str", "SERVER_ERROR"),
+    "CLIENT_ERROR_CODES": ("list", "CLIENT_TRACKING_SEND_FAILED,CLIENT_FEED_INIT_FAILED,CLIENT_FEED_BATCH_LOAD_FAILED"),
+    "FLOW_STEPS": ("int", 4),               # se2: first k error runs per participant
+    "FLOW_EXCLUDE_CODES": ("list", ""),     # se2: codes left out of the flow (empty: every code is shown)
+    "WARMUP_MAX_INDEX": ("int", 10),        # ap2
+    "SPOT_MAX_USERS": ("int", 30),          # sp1, sp2: most recent done participants per country in the list
+    "SPOT_MIN_REQUESTS": ("int", 10),       # sp1, sp2: default pick needs this many next_batch exchanges
+    "SPOT_USER": ("str", ""),               # COUNTRY:ID, overrides the default pick of the PREFERENCE condition
+    "SPOT_TEXT_MAX_CHARS": ("int", 2000),   # sp2: longer post texts are cut and marked
+    "DETAIL_TIMEOUT_S": ("int", 60),        # statement timeout of every detail query
+    "DETAIL": ("str", "off"),               # off, basic (Q1, Q2, Q4) or full (adds Q3)
+    "MAX_FILE_KB": ("int", 500),            # warning only
+}
+# parameters the page needs (meta.json "params"); the others only steer the pipeline
+PAGE_PARAMS = ["EVENT_BIN_MINUTES", "FLAG_BIN_MINUTES", "MIN_N_RATE", "RECORDS_BIN_WIDTH", "RECORDS_MAX",
+               "REQUESTS_MAX", "BATCH_SIZE", "DIFF_RANGE", "ATTEMPTS_MAX", "ERROR_AGE_BIN_MIN",
+               "ERROR_AGE_MAX_MIN", "SERVER_ERROR_CODE", "CLIENT_ERROR_CODES", "FLOW_STEPS",
+               "WARMUP_MAX_INDEX", "SPOT_MAX_USERS"]
+DETAIL_MODES = ["off", "basic", "full"]
+
+
+def parse_param(kind, value):
+    if kind == "int":
+        return int(value)
+    if kind == "list":
+        return parse_list(value)
+    return str(value)
+
+
+def default_params():
+    """PARAM_SPEC defaults, parsed (what config.env gives when it sets none of them)."""
+    return {k.lower(): parse_param(kind, default) for k, (kind, default) in PARAM_SPEC.items()}
 
 
 @dataclass(frozen=True)
@@ -36,6 +87,10 @@ class Config:
     creds: str
     outdir: str
     site_dir: str             # the preferfeed-status clone (parent of pipeline/)
+    params: dict = field(default_factory=default_params)   # PARAM_SPEC keys in lower case, parsed
+    inventory_file: str = ""  # runtime inventory parquet for the spot check (local only)
+    source: str = "live"      # live or export:FOLDER (replay)
+    pulled_at: str = ""       # ISO time of the pull, replay only
 
 
 def read_env_file(path):
@@ -92,7 +147,7 @@ def load(pipeline_dir, overrides=None):
     raw = read_env_file(shared_path)
     raw.update(read_env_file(local_path))
     over = parse_overrides(overrides)
-    unknown = set(over) - set(SHARED_KEYS) - set(LOCAL_KEYS) - {"UV"}
+    unknown = set(over) - set(SHARED_KEYS) - set(LOCAL_KEYS) - set(PARAM_SPEC) - set(OPTIONAL_LOCAL_KEYS) - {"UV"}
     if unknown:
         raise ValueError(f"unknown --set keys: {sorted(unknown)}")
     raw.update(over)
@@ -100,6 +155,8 @@ def load(pipeline_dir, overrides=None):
     if missing:
         raise ValueError(f"missing config keys: {missing}")
 
+    params = {k.lower(): parse_param(kind, raw.get(k, default)) for k, (kind, default) in PARAM_SPEC.items()}
+    optional = {k: raw.get(k, d) for k, d in OPTIONAL_LOCAL_KEYS.items()}
     site_dir = os.path.realpath(os.path.join(pipeline_dir, ".."))
     expand = lambda p: os.path.abspath(os.path.expanduser(p))
     cfg = Config(
@@ -125,6 +182,10 @@ def load(pipeline_dir, overrides=None):
         creds=expand(raw["CREDS"]),
         outdir=expand(raw["OUTDIR"]),
         site_dir=site_dir,
+        params=params,
+        inventory_file=expand(optional["INVENTORY_FILE"]) if optional["INVENTORY_FILE"] else "",
+        source=optional["SOURCE"],
+        pulled_at=optional["PULLED_AT"],
     )
     validate(cfg)
     return cfg
@@ -143,5 +204,33 @@ def validate(cfg):
         raise ValueError(f"OUTDIR {cfg.outdir} is inside the site repo {cfg.site_dir}")
     if is_inside(cfg.creds, cfg.site_dir):
         raise ValueError(f"CREDS {cfg.creds} is inside the site repo {cfg.site_dir}")
-    if not os.path.isdir(os.path.join(cfg.pfda_dir, "preferfeed_dataaccess")):
+    validate_params(cfg)
+    if cfg.source == "live" and not os.path.isdir(os.path.join(cfg.pfda_dir, "preferfeed_dataaccess")):
         raise FileNotFoundError(f"PFDA_DIR {cfg.pfda_dir} has no preferfeed_dataaccess package")
+
+
+def validate_params(cfg):
+    """Divisibility and range rules of the chart parameters."""
+    p = cfg.params
+    for key in ("event_bin_minutes", "flag_bin_minutes", "records_bin_width", "records_max", "requests_max",
+                "batch_size", "diff_range", "attempts_max", "error_age_bin_min", "error_age_max_min",
+                "flow_steps", "warmup_max_index", "spot_max_users", "detail_timeout_s"):
+        if p[key] <= 0:
+            raise ValueError(f"{key.upper()} must be > 0")
+    if cfg.bin_minutes % p["event_bin_minutes"]:
+        raise ValueError(f"EVENT_BIN_MINUTES ({p['event_bin_minutes']}) must divide BIN_MINUTES ({cfg.bin_minutes})")
+    if p["flag_bin_minutes"] % cfg.bin_minutes:
+        raise ValueError(f"FLAG_BIN_MINUTES ({p['flag_bin_minutes']}) must be a multiple of BIN_MINUTES")
+    if p["records_max"] % p["records_bin_width"]:
+        raise ValueError("RECORDS_MAX must be a multiple of RECORDS_BIN_WIDTH")
+    if p["error_age_max_min"] % p["error_age_bin_min"]:
+        raise ValueError("ERROR_AGE_MAX_MIN must be a multiple of ERROR_AGE_BIN_MIN")
+    if p["detail"] not in DETAIL_MODES:
+        raise ValueError(f"DETAIL must be one of {DETAIL_MODES}")
+    if p["spot_user"] and (":" not in p["spot_user"] or not p["spot_user"].split(":", 1)[1].isdigit()):
+        raise ValueError("SPOT_USER must be COUNTRY:ID")
+    if cfg.source != "live":
+        if not cfg.source.startswith("export:") or not cfg.source[len("export:"):]:
+            raise ValueError("SOURCE must be live or export:FOLDER")
+        if not cfg.pulled_at:
+            raise ValueError("SOURCE=export:... needs PULLED_AT (ISO time of the replayed pull)")

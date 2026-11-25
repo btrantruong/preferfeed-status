@@ -42,7 +42,7 @@ def out_files(tmp_path, name, text):
     d.mkdir(exist_ok=True)
     (d / "status_bins.csv").write_text(text)
     (d / "meta.json").write_text('{"pulled_at": "%s"}\n' % name)
-    return str(d / "status_bins.csv"), str(d / "meta.json")
+    return {"status_bins.csv": str(d / "status_bins.csv")}, str(d / "meta.json")
 
 
 def test_push_then_other_machine_continues(tmp_path, two_clones):
