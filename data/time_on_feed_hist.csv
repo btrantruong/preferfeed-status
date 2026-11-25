@@ -116,3 +116,5 @@ bin_start,country,condition,measure,group,dur_bin,n,sum_min
 2026-11-25T12:45:00Z,UK,ATTENTION,total,not_done,0,1,0.0
 2026-11-25T12:45:00Z,UK,PREFERENCE,final_attempt,done,8,1,7.066
 2026-11-25T12:45:00Z,UK,PREFERENCE,total,done,8,1,7.066
+2026-11-25T13:00:00Z,UK,PREFERENCE,final_attempt,not_done,5,1,4.751
+2026-11-25T13:00:00Z,UK,PREFERENCE,total,not_done,5,1,4.751

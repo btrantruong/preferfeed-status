@@ -63,3 +63,4 @@ bin_start,country,attempt_no,ends_as,dur_bin,n,sum_min
 2026-11-25T12:30:00Z,UK,1,cancelled,0,1,0.116
 2026-11-25T12:45:00Z,UK,1,done,8,1,7.066
 2026-11-25T12:45:00Z,UK,1,incomplete,0,1,0.0
+2026-11-25T13:00:00Z,UK,1,incomplete,5,1,4.751
