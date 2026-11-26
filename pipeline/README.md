@@ -1,6 +1,7 @@
 # pipeline
 
 Changelog
+- 2026-11-26: the spot check panel of the page is now E (page panels regrouped); text only.
 - 2026-11-25: sessions.py (attempts, time on the feed, in session or left), the incremental per-attempt record aggregates, three published session files and the local ids report (report.py, IDS_FILE).
 - 2026-11-25: spot_users.json (panel D) is published when SPOT_PUBLISH is on.
 - 2026-11-25: added PULL_COUNTRIES (query only some countries, `--countries`) and LAUNCH_BY_COUNTRY (a later launch per country).
@@ -22,11 +23,11 @@ Pulls `visited_users` from each country database, gives each participant one sta
 | `detail.py` | the detail pull per country, with the cache of final counts (`detail_cache.json` in `OUTDIR`) |
 | `sessions.py` | attempts, time on the feed and the in session / left state per participant (pure functions) |
 | `report.py` | the local ids report (markdown text from tables) |
-| `spot.py` | participant list, default picks, batches and post vectors of the spot check (panel D) |
+| `spot.py` | participant list, default picks, batches and post vectors of the spot check (panel E) |
 | `classify.py` | status and reason per participant (pure functions) |
 | `aggregate.py` | runs the registry, carry-over for failed servers and failed detail pulls, `meta.json`, history |
 | `publish.py` | copies the produced registry files and `meta.json` into `../data/`, commits only them, pushes |
-| `preview.py` | serves the page locally with `/data/` mapped to the registry files of `OUTDIR`, `meta.json` and `spot_users.json` (panel D) from `OUTDIR` |
+| `preview.py` | serves the page locally with `/data/` mapped to the registry files of `OUTDIR`, `meta.json` and `spot_users.json` (panel E) from `OUTDIR` |
 | `tests/` | synthetic tests (no study data) |
 
 ## Set up a machine (once)

@@ -1,4 +1,4 @@
-/* D1. User spot check: u_long over time (panel D). */
+/* E2. User spot check: u_long over time (panel E). */
 import { frame, linear, yTicks, yAxis, baseline, el, text, tooltip, local, legend } from "../svg.js";
 import { DIMS, DIM_VARS } from "../colors.js";
 import { pickUser } from "./_spot.js";

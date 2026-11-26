@@ -1,11 +1,11 @@
-/* C2. Warm-up exit: share of next_batch exchanges in phase algorithm, by request index and condition. */
+/* C7. Warm-up exit: share of next_batch exchanges in phase algorithm, by request index and condition. */
 import { barPlot } from "../plots.js";
 import { pool } from "../select.js";
 import { COND, lc } from "../colors.js";
 import { h } from "../util.js";
 
 export default {
-  id: "ap2", title: "Warm-up exit", files: ["warmup.csv"], window: "created",
+  id: "ap2", group: "Request pulse", title: "Warm-up exit", files: ["warmup.csv"], window: "created",
   caption: (m) => "x: request_index of the final attempt (1 to " + ((m.params || {}).warmup_max_index || 10) + "). y: share of next_batch exchanges of attention and preference participants whose algo_state.phase is algorithm (the profile is used), in percent, one plot per condition; the number of exchanges at each index is printed under the axis. Participants created inside the window, countries as selected above. The phase is used because on algorithm version 0.1.3 the client sends the assigned condition from the first next_batch on, so the algorithm type no longer switches from RANDOM.",
   how: "Shows at which batch index participants leave the warm-up. If no exchange is in phase algorithm, the warm-up lasts longer than the indices shown or the phase is not stored.",
   draw(box, c) {

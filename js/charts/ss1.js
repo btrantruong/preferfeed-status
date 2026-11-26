@@ -1,4 +1,4 @@
-/* B3. In session or left: the state of the participants at the last pull, by condition. */
+/* B1. In session or left: the state of the participants at the last pull, by condition. */
 import { barPlot } from "../plots.js";
 import { CONDITIONS, lc } from "../colors.js";
 import { pool } from "../select.js";
@@ -8,7 +8,7 @@ import { css, pct } from "../util.js";
 const STATES = [["done", "done", "--s-done"], ["stopped", "stopped (cancelled)", "--s-cancelled"], ["in_session", "in session", "--c3"], ["left", "left", "--text-muted"]];
 
 export default {
-  id: "ss1", group: "Sessions", title: "In session or left", files: ["session_state.csv"], window: "created",
+  id: "ss1", title: "In session or left", files: ["session_state.csv"], window: "created",
   caption: (m) => {
     const s = m.sessions, rule = (m.params || {}).session_rule === "silence" ? "silence" : "time";
     const ref = s ? "T_ref is " + s.t_ref_min.toFixed(1) + " minutes (" + (s.source === "launch" ? "the " + Math.round((((m.params || {}).session_ref_quantile) || 0.95) * 100) + "th percentile of entry to last record of " + s.n + " done participants" : "the fixed design length of the timeline, because fewer than the required number of participants are done") + ")" : "";

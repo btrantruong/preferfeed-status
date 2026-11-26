@@ -1,5 +1,5 @@
 /* Loads meta.json and the files listed in meta.files (a file that is absent or fails is skipped), and, on the
-   data/spot_users.json (panel D: participants identified by database id, the posts they saw, dwell times) when it is published. */
+   data/spot_users.json (panel E: participants identified by database id, the posts they saw, dwell times) when it is published. */
 import { parseCSV, indexRows } from "./select.js";
 
 export async function loadAll(base) {
@@ -21,7 +21,7 @@ export async function loadAll(base) {
   return { meta, files, launchMs, binMs, eventMs };
 }
 
-/** Is the spot check file (panel D) published? (HEAD request) */
+/** Is the spot check file (panel E) published? (HEAD request) */
 export async function spotExists() {
   try { return (await fetch("data/spot_users.json", { method: "HEAD", cache: "no-store" })).ok; } catch (e) { return false; }
 }

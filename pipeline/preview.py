@@ -1,7 +1,7 @@
 """Serve the page locally with /data/ mapped to OUTDIR (the last run's files, pushed or not).
 
   ./run.sh is not needed; run:  uv run --locked python preview.py [--port 8765] [--host 127.0.0.1]
-/data/ is mapped to OUTDIR for the registry files, meta.json and spot_users.json (panel D).
+/data/ is mapped to OUTDIR for the registry files, meta.json and spot_users.json (panel E).
 Then open http://127.0.0.1:8765/ (on barnard through VS Code port forwarding).
 """
 import argparse

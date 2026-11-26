@@ -1,4 +1,4 @@
-/* B-errors 2. Errors by type and sequence: flow chart of the first FLOW_STEPS error runs. */
+/* C2. Errors by type and sequence: flow chart of the first FLOW_STEPS error runs. */
 import { pool } from "../select.js";
 import { frame, el, text, tooltip } from "../svg.js";
 import { columns, layout, bands, fitScale, START, END } from "../flow.js";

@@ -51,7 +51,7 @@ function renderHeader() {
   const stale = meta.stale_after_min && (Date.now() - pulledMs) / 60000 > meta.stale_after_min;
   $("warn").innerHTML = stale ? '<div class="warn" role="status">The data is older than ' + meta.stale_after_min + " minutes; updates may have stopped.</div>" : "";
   renderInfo();
-  $("footer").innerHTML = (spotAvailable ? "Aggregate counts, except panel D (see About the data). " : "Aggregate counts only; no individual data is published. ") + "Scripts: <a href=\"" + esc(meta.scripts_url) + "\">" +
+  $("footer").innerHTML = (spotAvailable ? "Aggregate counts, except panel E (see About the data). " : "Aggregate counts only; no individual data is published. ") + "Scripts: <a href=\"" + esc(meta.scripts_url) + "\">" +
     esc(meta.scripts_url.replace(/^https?:\/\//, "")) + "</a>" + (meta.code_version ? " (version " + esc(meta.code_version) + ")" : "") + ".";
 }
 
@@ -69,7 +69,7 @@ function renderInfo() {
     "<b>cancelled:</b> the session was stopped by the study software. There is no cancel button for participants; a session is stopped when an automated browser is detected (bot), when the participant did not focus on the feed or view enough posts by the end (idle: under " + meta.idle_min_seconds + " s focused or under " + meta.idle_min_posts + " posts viewed), or when the timeline page was reloaded (reload). other means stopped without one of these three reasons.",
     "<b>Several codes and retakes:</b> a participant can be stopped, restart (allowed after bot or idle detection; a participant who is done cannot start again) and be stopped again. A restart sets the status back to incomplete, so a retake is recognised by its recorded attempt and by the stop that came before it. The reason shown is the last stop. Each participant is counted once, so the shares add up to 100%.",
     "<b>incomplete:</b> neither done nor stopped. These participants left before the end or are still in their session (sessions last up to about 10 minutes). possibly in session marks those who started less than " + meta.session_min + " minutes before the last pull. error logged means at least one technical error was recorded (ignoring " + esc(ignore) + ").",
-    "<b>Data and code:</b> " + (spotAvailable ? "aggregate counts, except panel D. Panel D shows, for a list of participants identified by their database id (not their survey id), the posts they were served, the time they spent on each post and the profile estimated by the algorithm; it contains no survey answers or other personal data. " : "aggregate counts only; no individual data is published. ") + "Scripts: <a href=\"" + esc(meta.scripts_url) + "\">" + esc(meta.scripts_url.replace(/^https?:\/\//, "")) + "</a>" + (meta.code_version ? " (version " + esc(meta.code_version) + ")" : "") + ".",
+    "<b>Data and code:</b> " + (spotAvailable ? "aggregate counts, except panel E. Panel E shows, for a list of participants identified by their database id (not their survey id), the posts they were served, the time they spent on each post and the profile estimated by the algorithm; it contains no survey answers or other personal data. " : "aggregate counts only; no individual data is published. ") + "Scripts: <a href=\"" + esc(meta.scripts_url) + "\">" + esc(meta.scripts_url.replace(/^https?:\/\//, "")) + "</a>" + (meta.code_version ? " (version " + esc(meta.code_version) + ")" : "") + ".",
   ];
   $("info-body").innerHTML = "<ul>" + items.map((t) => "<li>" + t + "</li>").join("") + "</ul>";
 }
@@ -139,9 +139,9 @@ function buildPanels() {
     };
     root.append(h("section", { class: "card panel", "aria-labelledby": "ph-" + panel.id },
       h("h2", { id: "ph-" + panel.id }, panel.id + ". " + panel.title), pagerBox, ui.title, ui.box, ui.cov, ui.cap, ui.how));
-    const saved = clampPage(panel.id in START_PAGES ? +START_PAGES[panel.id] : +store("pfs.page." + panel.id) || 0, panel.pages.length);
+    const saved = clampPage(panel.id in START_PAGES ? +START_PAGES[panel.id] : +store("pfs.page." + panel.key) || 0, panel.pages.length);
     ui.page = saved;
-    ui.pager = createPager(pagerBox, { onPage: (k) => { ui.page = k; if (!(panel.id in START_PAGES)) store("pfs.page." + panel.id, String(k)); drawPanel(panel); } });
+    ui.pager = createPager(pagerBox, { onPage: (k) => { ui.page = k; if (!(panel.id in START_PAGES)) store("pfs.page." + panel.key, String(k)); drawPanel(panel); } });
     ui.pager.set(saved, panel.pages.map((p) => (p.group ? p.group + ": " : "") + p.title));
     panelUI[panel.id] = ui;
   });

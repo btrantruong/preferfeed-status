@@ -1,10 +1,10 @@
-/* C1. Algorithm calls over time next to the number of active participants. */
+/* C6. Algorithm calls over time next to the number of active participants. */
 import { frame, linear, yTicks, yAxis, baseline, timeAxis, el, tooltip, local, legend, text } from "../svg.js";
 import { grid, series, sum } from "./_events.js";
 import { css, h } from "../util.js";
 
 export default {
-  id: "ap1", title: "Algorithm calls over time", files: ["algo_calls.csv"], window: "event",
+  id: "ap1", group: "Request pulse", title: "Algorithm calls over time", files: ["algo_calls.csv"], window: "event",
   caption: (m) => "Both plots share the time axis (server time in bins of " + (m.event_bin_minutes || 5) + " minutes inside the window, countries as selected above). Top: algo_exchange rows per bin, init and next_batch as two lines. Bottom: active participants per bin, the distinct participants with at least one record_entry row in the bin. Tracking rows are written by the app server and do not depend on the algorithm server.",
   how: "Calls dropping while active participants stay means the algorithm server stalled.",
   draw(box, c) {

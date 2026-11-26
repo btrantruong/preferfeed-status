@@ -1,4 +1,4 @@
-/* B-errors 5. Client-side network failures over time. */
+/* C5. Client-side network failures over time. */
 import { linePlot } from "../plots.js";
 import { grid, series, sum } from "./_events.js";
 import { legend } from "../svg.js";

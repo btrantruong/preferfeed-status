@@ -1,4 +1,4 @@
-/* B5. Duration of each attempt, by attempt number and how the attempt ended. */
+/* B3. Duration of each attempt, by attempt number and how the attempt ended. */
 import { barPlot } from "../plots.js";
 import { pool } from "../select.js";
 import { legend } from "../svg.js";
@@ -8,7 +8,7 @@ import { css } from "../util.js";
 const ENDS = [["restarted", "restarted", "--c7"], ["done", "done", "--s-done"], ["cancelled", "cancelled", "--s-cancelled"], ["incomplete", "incomplete", "--text-muted"]];
 
 export default {
-  id: "ss3", group: "Sessions", title: "Attempt durations", files: ["attempts_hist.csv"], window: "created",
+  id: "ss3", title: "Attempt durations", files: ["attempts_hist.csv"], window: "created",
   caption: (m) => "x: duration of one attempt (from its init exchange to its last behaviour record), in bins whose edges are " + (((m.params || {}).duration_edges_s) || []).join(", ") + " seconds (the first bin is below the first edge, the last bin is open). y: attempts of participants created inside the window, one plot per attempt number (the last plot holds that number and higher), stacked by how the attempt ended: restarted (the participant started again), or the final status of the participant for their last attempt. Each attempt is counted once.",
   how: "Attempts that ended in a restart are mostly short. A participant's last attempt is incomplete when they left without being stopped.",
   draw(box, c) {

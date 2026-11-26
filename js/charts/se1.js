@@ -1,4 +1,4 @@
-/* B-errors 1. Server errors over time, one line per country. */
+/* C1. Server errors over time, one line per country. */
 import { linePlot } from "../plots.js";
 import { grid, series, sum } from "./_events.js";
 import { COUNTRY_SLOTS } from "../colors.js";

@@ -1,4 +1,4 @@
-/* B1. Integrity-flag rate over time, one small panel per flag. */
+/* D3. Integrity-flag rate over time, one small panel per flag. */
 import { barPlot } from "../plots.js";
 import { rebin } from "../select.js";
 import { infoButton } from "../popover.js";
@@ -14,7 +14,7 @@ export const FLAGS = [
 ];
 
 export default {
-  id: "dc1", group: "Data completeness", title: "Integrity-flag rate over time", files: ["flags.csv"], window: "created",
+  id: "dc1", title: "Integrity-flag rate over time", files: ["flags.csv"], window: "created",
   caption: (meta) => "x: session creation time in bins of " + ((meta.params || {}).flag_bin_minutes || 60) + " minutes from the launch (created_at). y: share of the done participants created in the bin who carry the flag, in percent; the top panel gives the number of done participants per bin. Bins with fewer than " + ((meta.params || {}).min_n_rate || 5) + " done participants are drawn faded. Flags are evaluated on the final attempt of each participant (the logic of check_user() in daily_check.py).",
   how: "It shows done participants whose behavioural or algorithm logs are missing. Click or hover the i beside a flag for its definition.",
   draw(box, c) {

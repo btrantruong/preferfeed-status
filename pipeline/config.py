@@ -41,7 +41,7 @@ PARAM_SPEC = {
     "SPOT_MIN_REQUESTS": ("int", 10),       # sp1, sp2: default pick needs this many next_batch exchanges
     "SPOT_USER": ("str", ""),               # COUNTRY:ID, overrides the default pick of the PREFERENCE condition
     "SPOT_TEXT_MAX_CHARS": ("int", 2000),   # sp2: longer post texts are cut and marked
-    "SPOT_PUBLISH": ("str", "on"),          # on: spot_users.json (panel D) is published with the data; off: it is not, and a published copy is removed
+    "SPOT_PUBLISH": ("str", "on"),          # on: spot_users.json (panel E) is published with the data; off: it is not, and a published copy is removed
     "SPOT_DWELL_CAP_S": ("int", 30),        # sp2: dwell time (seconds) at which the point size stops growing
     "DURATION_EDGES_S": ("intlist", "10,60,120,180,240,300,360,420,480,540,600,660,720,780,840,900"),   # time on the feed and attempt histograms: bin edges in seconds (bin 0 is below the first edge, the last bin is open)
     "SESSION_SILENCE_S": ("int", 90),       # silence rule: a last record at most this old means in session

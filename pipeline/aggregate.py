@@ -8,7 +8,7 @@ and bin widths), and meta.json keeps its as_of. The detail files (record_entry, 
 failure domain: a country whose detail pull fails, or all countries when DETAIL=off, keep their last published
 detail rows, marked with their own as_of in meta.files and meta.detail.
 
-Row-level files stay in OUTDIR: participants.csv, history/ and detail_cache.json. spot_users.json (panel D) is published
+Row-level files stay in OUTDIR: participants.csv, history/ and detail_cache.json. spot_users.json (panel E) is published
 with the data when SPOT_PUBLISH is on.
 """
 import json
@@ -273,7 +273,7 @@ def build_meta(cfg, pulled_ms, launch_at_ms, status, detail_status, detail_prev,
         "flow_nodes": cubes.FLOW_NODES,
         "files": files_info,
         "sessions": sessions,   # T_ref and its source for the in session / left rule, or None
-        "spot": spot,   # panel D: {"as_of", "n_users"} of the published spot_users.json, or None
+        "spot": spot,   # panel E: {"as_of", "n_users"} of the published spot_users.json, or None
     }
 
 
@@ -284,7 +284,7 @@ def append_history(outdir, bins, pulled_iso, machine, launch_iso):
     rows.to_csv(path, mode="a", header=not os.path.isfile(path), index=False)
 
 
-# ---- spot check (panel D) ----------------------------------------------------------------------------
+# ---- spot check (panel E) ----------------------------------------------------------------------------
 def write_spot(cfg, source, P, ex_all, detail_status, outdir):
     """OUTDIR/spot_users.json for the listed participants. Returns (note, n_users): n_users is 0 when nothing was
     written or the list is empty. The file is published only if SPOT_PUBLISH is on (publish.py)."""

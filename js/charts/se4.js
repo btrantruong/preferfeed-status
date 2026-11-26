@@ -1,4 +1,4 @@
-/* B-errors 4. Status mix with and without server errors. */
+/* C4. Status mix with and without server errors. */
 import { barPlot } from "../plots.js";
 import { pool } from "../select.js";
 import { STATUS, STATUS_LABEL } from "../colors.js";

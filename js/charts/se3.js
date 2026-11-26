@@ -1,4 +1,4 @@
-/* B-errors 3. Where in the session the error happens. */
+/* C3. Where in the session the error happens. */
 import { barPlot } from "../plots.js";
 import { pool } from "../select.js";
 import { h } from "../util.js";

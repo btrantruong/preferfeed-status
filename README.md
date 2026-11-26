@@ -1,6 +1,7 @@
 # preferFeed fielding status
 
 Changelog
+- 2026-11-26: panels regrouped (B drop out stats, C request pulse and errors, D data completeness, E user spot check); requests per participant shows one condition at a time.
 - 2026-11-25: panel B pages 3 to 5: in session or left, time on the feed, attempt durations (sessions files, detail pull); a local ids report.
 - 2026-11-25: panel D: the draw button is replaced by one button per condition that cycles through its participants, plus a dropdown.
 - 2026-11-25: panel D: no seed and no inventory-file warning; the button draws another batch of users.
@@ -12,7 +13,7 @@ Changelog
 
 Page: https://btrantruong.github.io/preferfeed-status/
 
-The page shows, per country server or for all countries, how many participants started the study since the launch and the status of each at the last data pull. Aggregate counts are published, with one exception: panel D shows, for a list of participants identified by their database id, the posts they were served, the time spent on each post and the algorithm's profile (no survey id, answers or other personal data); `SPOT_PUBLISH=off` in `pipeline/config.env` stops that and removes the published copy.
+The page shows, per country server or for all countries, how many participants started the study since the launch and the status of each at the last data pull. Aggregate counts are published, with one exception: panel E shows, for a list of participants identified by their database id, the posts they were served, the time spent on each post and the algorithm's profile (no survey id, answers or other personal data); `SPOT_PUBLISH=off` in `pipeline/config.env` stops that and removes the published copy.
 
 ## Status definitions
 
@@ -29,9 +30,10 @@ The thresholds and codes used for a given pull are in `data/meta.json`.
 The top panel (participants since launch) and its window slider with two draggable handles stay on top. The country control selects the countries for every figure: All pools them by summing their counts, a click keeps one country. Each panel below has a pager; the last page viewed is remembered in the browser.
 
 - A. Completion status: the status of the participants at the last pull (cs0), condition balance (cs1), retaking attempts (cs2).
-- B. Data completeness and errors: requests per participant (dc3), records per done participant (dc2); in session or left by condition (ss1), time on the feed of done and not-done participants (ss2), duration of each attempt by attempt number and outcome (ss3); server errors over time (se1), errors by type and sequence (se2), where in the session the error happens (se3), status mix with and without server errors (se4), client-side network failures (se5); integrity-flag rate over time (dc1, last page, with an i beside each flag for its definition).
-- C. Algorithm check: algorithm calls and active participants over time (ap1), warm-up exit (ap2).
-- D. User spot check (sp2, sp1): one participant's batch sums and posts (point area = dwell time) over their u_long sum and norm, and u_long over time. One button per condition selects the next participant of that condition (a click cycles through them) and a dropdown, grouped by condition, selects a specific participant. The panel appears when `data/spot_users.json` exists; a run writes it only when `DETAIL` is basic or full and `INVENTORY_FILE` is set on that machine, and a published copy stays when a later run (for example on a machine without the inventory) does not write one.
+- B. Drop out stats: in session or left by condition (ss1), time on the feed of done and not-done participants (ss2), duration of each attempt by attempt number and outcome (ss3).
+- C. Request pulse & errors: server errors over time (se1), errors by type and sequence (se2), where in the session the error happens (se3), status mix with and without server errors (se4), client-side network failures (se5); algorithm calls and active participants over time (ap1), warm-up exit (ap2).
+- D. Data completeness: requests per participant, one condition at a time with a button per condition (dc3), records per done participant (dc2), integrity-flag rate over time (dc1, with an i beside each flag for its definition).
+- E. User spot check (sp2, sp1): one participant's batch sums and posts (point area = dwell time) over their u_long sum and norm, and u_long over time. One button per condition selects the next participant of that condition (a click cycles through them) and a dropdown, grouped by condition, selects a specific participant. The panel appears when `data/spot_users.json` exists; a run writes it only when `DETAIL` is basic or full and `INVENTORY_FILE` is set on that machine, and a published copy stays when a later run (for example on a machine without the inventory) does not write one.
 
 Every page has a caption with the quantities on the axes and how they were computed. Participant charts include the participants created inside the window; event charts include the events whose time lies inside it.
 

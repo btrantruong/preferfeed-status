@@ -1,9 +1,9 @@
-/* B2. Records per done participant. */
+/* D2. Records per done participant. */
 import { barPlot } from "../plots.js";
 import { pool } from "../select.js";
 
 export default {
-  id: "dc2", group: "Data completeness", title: "Records per done participant", files: ["records_hist.csv"], window: "created",
+  id: "dc2", title: "Records per done participant", files: ["records_hist.csv"], window: "created",
   caption: (m) => "x: number of record_entry rows of the participant's final attempt, in bins of " + ((m.params || {}).records_bin_width || 2000) + " rows with a separate bar for exactly 0 and an open last bin from " + ((m.params || {}).records_max || 50000) + ". y: number of done participants created inside the window, for the countries selected above.",
   how: "A spike at 0 or at very low counts means data was lost. Rows are written about 40 per focused second while the feed is open, so a low count can also come from a short session.",
   draw(box, c) {

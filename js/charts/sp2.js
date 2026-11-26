@@ -1,4 +1,4 @@
-/* D1. User spot check: batch sums and posts (top, with the dwell time of each post) over the u_long profile (bottom),
+/* E1. User spot check: batch sums and posts (top, with the dwell time of each post) over the u_long profile (bottom),
    one participant. */
 import { frame, linear, yTicks, el, text, legend, thin, baseline } from "../svg.js";
 import { DIMS } from "../colors.js";

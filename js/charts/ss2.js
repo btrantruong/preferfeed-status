@@ -1,4 +1,4 @@
-/* B4. Time spent on the feed, done versus not done. */
+/* B2. Time spent on the feed, done versus not done. */
 import { barPlot } from "../plots.js";
 import { pool } from "../select.js";
 import { legend } from "../svg.js";
@@ -8,7 +8,7 @@ import { css } from "../util.js";
 const GROUPS = [["done", "done", "--s-done"], ["not_done", "not done", "--text-muted"]];
 
 export default {
-  id: "ss2", group: "Sessions", title: "Time on the feed", files: ["time_on_feed_hist.csv"], window: "created",
+  id: "ss2", title: "Time on the feed", files: ["time_on_feed_hist.csv"], window: "created",
   caption: (m) => "x: time on the feed in bins whose edges are " + (((m.params || {}).duration_edges_s) || []).join(", ") + " seconds (the first bin is below the first edge, the last bin is open). y: participants created inside the window, stacked by done and not done. Left: the final attempt, from its init exchange to its last behaviour record. Right: the total over all attempts (the sum of the attempt durations; time between attempts is not counted). Participants without a behaviour record are not in the bars.",
   how: "Not-done participants far to the left left the feed early. A done participant's final attempt is close to the 10 minutes of the timeline; a longer total comes from earlier attempts. Medians are read from the bins and are approximate; means use the exact sums.",
   draw(box, c) {

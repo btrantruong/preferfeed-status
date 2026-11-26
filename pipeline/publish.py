@@ -1,7 +1,7 @@
 """Git steps: update the clone before a run, and commit + push the data files after it.
 
 The data files are the files of cubes.REGISTRY that the run produced, plus meta.json and, when SPOT_PUBLISH is on,
-spot_users.json (panel D). Nothing else is ever copied: participants.csv, history/ and detail_cache.json stay in OUTDIR."""
+spot_users.json (panel E). Nothing else is ever copied: participants.csv, history/ and detail_cache.json stay in OUTDIR."""
 import os
 import shutil
 import subprocess

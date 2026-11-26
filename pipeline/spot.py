@@ -1,4 +1,4 @@
-"""User spot check (panel D, local preview only): participant list, default picks, batches and post vectors.
+"""User spot check (panel E, local preview only): participant list, default picks, batches and post vectors.
 
 Pure functions. The output (spot_users.json) holds one participant's data (u_long profile and the posts that
 participant saw), so it is written to OUTDIR, never copied by publish.py and served by preview.py under
