@@ -461,4 +461,5 @@ bin_start,country,condition,started,has_server_error,status,reason,n
 2026-11-26T20:45:00Z,FR,RANDOM,1,0,incomplete,no_error,1
 2026-11-26T21:00:00Z,PL,ATTENTION,1,0,incomplete,no_error,1
 2026-11-26T21:00:00Z,PL,PREFERENCE,1,0,done,done,1
+2026-11-26T21:15:00Z,DE,RANDOM,1,0,incomplete,in_session,1
 2026-11-26T21:15:00Z,PL,ATTENTION,1,0,incomplete,in_session,1
