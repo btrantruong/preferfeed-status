@@ -37,7 +37,7 @@ bin_start,country,condition,started,has_server_error,status,reason,n
 2026-11-25T11:45:00Z,UK,ATTENTION,1,0,done,done,1
 2026-11-25T12:00:00Z,UK,PREFERENCE,1,0,done,done,1
 2026-11-25T12:30:00Z,UK,PREFERENCE,1,0,cancelled,reload,1
-2026-11-25T12:45:00Z,UK,ATTENTION,1,0,incomplete,no_error,1
+2026-11-25T12:45:00Z,UK,ATTENTION,1,0,incomplete,error_logged,1
 2026-11-25T12:45:00Z,UK,PREFERENCE,1,0,done,done,1
 2026-11-25T13:00:00Z,UK,PREFERENCE,1,0,done,done,1
 2026-11-25T14:15:00Z,UK,RANDOM,1,0,done,done,1
@@ -49,3 +49,12 @@ bin_start,country,condition,started,has_server_error,status,reason,n
 2026-11-25T18:15:00Z,UK,ATTENTION,1,0,done,done,1
 2026-11-25T18:15:00Z,UK,ATTENTION,1,0,incomplete,no_error,1
 2026-11-25T18:30:00Z,UK,PREFERENCE,1,0,incomplete,no_error,1
+2026-11-25T20:00:00Z,UK,RANDOM,1,0,done,done,1
+2026-11-25T20:45:00Z,UK,RANDOM,1,0,incomplete,no_error,1
+2026-11-25T21:00:00Z,UK,ATTENTION,1,0,done,done,1
+2026-11-25T21:15:00Z,UK,RANDOM,1,0,incomplete,no_error,1
+2026-11-25T21:30:00Z,UK,RANDOM,1,0,done,done,1
+2026-11-25T22:15:00Z,UK,ATTENTION,1,0,incomplete,no_error,1
+2026-11-25T22:15:00Z,UK,PREFERENCE,1,0,incomplete,no_error,1
+2026-11-25T23:45:00Z,UK,PREFERENCE,1,0,done,done,1
+2026-11-26T09:00:00Z,UK,PREFERENCE,1,0,done,done,1

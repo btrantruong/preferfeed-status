@@ -25,7 +25,7 @@ bin_start,country,status,reason,n
 2026-11-25T12:00:00Z,UK,done,done,1
 2026-11-25T12:30:00Z,UK,cancelled,reload,1
 2026-11-25T12:45:00Z,UK,done,done,1
-2026-11-25T12:45:00Z,UK,incomplete,no_error,1
+2026-11-25T12:45:00Z,UK,incomplete,error_logged,1
 2026-11-25T13:00:00Z,UK,done,done,1
 2026-11-25T14:15:00Z,UK,done,done,1
 2026-11-25T14:15:00Z,UK,incomplete,no_error,1
@@ -36,3 +36,11 @@ bin_start,country,status,reason,n
 2026-11-25T18:15:00Z,UK,done,done,1
 2026-11-25T18:15:00Z,UK,incomplete,no_error,1
 2026-11-25T18:30:00Z,UK,incomplete,no_error,1
+2026-11-25T20:00:00Z,UK,done,done,1
+2026-11-25T20:45:00Z,UK,incomplete,no_error,1
+2026-11-25T21:00:00Z,UK,done,done,1
+2026-11-25T21:15:00Z,UK,incomplete,no_error,1
+2026-11-25T21:30:00Z,UK,done,done,1
+2026-11-25T22:15:00Z,UK,incomplete,no_error,2
+2026-11-25T23:45:00Z,UK,done,done,1
+2026-11-26T09:00:00Z,UK,done,done,1

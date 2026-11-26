@@ -19,7 +19,7 @@ bin_start,country,status,attempts,after_stop,n
 2026-11-25T10:15:00Z,UK,incomplete,1,0,1
 2026-11-25T10:15:00Z,UK,incomplete,4,0,1
 2026-11-25T10:30:00Z,UK,done,1,0,6
-2026-11-25T10:45:00Z,UK,incomplete,2,0,1
+2026-11-25T10:45:00Z,UK,incomplete,3,0,1
 2026-11-25T11:00:00Z,UK,done,1,0,2
 2026-11-25T11:15:00Z,UK,done,1,0,3
 2026-11-25T11:15:00Z,UK,incomplete,1,0,1
@@ -28,7 +28,7 @@ bin_start,country,status,attempts,after_stop,n
 2026-11-25T12:00:00Z,UK,done,1,0,1
 2026-11-25T12:30:00Z,UK,cancelled,1,0,1
 2026-11-25T12:45:00Z,UK,done,1,0,1
-2026-11-25T12:45:00Z,UK,incomplete,1,0,1
+2026-11-25T12:45:00Z,UK,incomplete,2,0,1
 2026-11-25T13:00:00Z,UK,done,1,0,1
 2026-11-25T14:15:00Z,UK,done,1,0,1
 2026-11-25T14:15:00Z,UK,incomplete,1,0,1
@@ -39,3 +39,11 @@ bin_start,country,status,attempts,after_stop,n
 2026-11-25T18:15:00Z,UK,done,1,0,1
 2026-11-25T18:15:00Z,UK,incomplete,1,0,1
 2026-11-25T18:30:00Z,UK,incomplete,1,0,1
+2026-11-25T20:00:00Z,UK,done,1,0,1
+2026-11-25T20:45:00Z,UK,incomplete,1,0,1
+2026-11-25T21:00:00Z,UK,done,4,1,1
+2026-11-25T21:15:00Z,UK,incomplete,1,0,1
+2026-11-25T21:30:00Z,UK,done,1,0,1
+2026-11-25T22:15:00Z,UK,incomplete,1,0,2
+2026-11-25T23:45:00Z,UK,done,1,0,1
+2026-11-26T09:00:00Z,UK,done,1,0,1
