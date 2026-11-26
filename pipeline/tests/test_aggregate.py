@@ -137,7 +137,11 @@ def test_before_launch_is_empty_not_error(tmp_path):
 def write_configs(pipeline_dir, local):
     shared = os.path.join(os.path.dirname(HERE), "pipeline", "config.env")
     with open(shared) as fh:
-        (pipeline_dir / "config.env").write_text(fh.read())
+        text = fh.read()
+    # the per-country windows of the running study are blanked, so that the tests do not depend on them
+    for key in ("PULL_COUNTRIES", "LAUNCH_BY_COUNTRY", "END_BY_COUNTRY"):
+        text = "\n".join(f"{key}=" if line.startswith(key + "=") else line for line in text.splitlines()) + "\n"
+    (pipeline_dir / "config.env").write_text(text)
     (pipeline_dir / "config.local.env").write_text(local)
 
 

@@ -108,6 +108,24 @@ def build_spot(picks, spot_rows, inventories, p, local_sha, inventory_note=None)
             "dwell_unmatched": sum(u["dwell_unmatched"] for u in users)}
 
 
+def carry_over(data, previous, since_ms):
+    """data plus the users of an earlier spot file for the countries of since_ms ({country: launch in ms}, those
+    without fresh detail in this run) who were created since that launch, with the posts they saw and the inventory
+    entry of their country. previous: a parsed spot file (full or public) or None."""
+    old = [u for u in (previous or {}).get("users", [])
+           if u["country"] in since_ms and u["created_at"] >= since_ms[u["country"]]]
+    if not old:
+        return data
+    seen = {i for u in old for e in u["exchanges"] for b in e["batches"] for i in b["post_ids"]}
+    posts = {i: v for i, v in previous.get("posts", {}).items() if i in seen}
+    have = {u["country"] for u in old}
+    inventory = {c: v for c, v in previous.get("inventory", {}).items() if c in have}
+    users = sorted(data["users"] + old, key=lambda u: -u["created_at"])
+    return {**data, "users": users, "posts": {**posts, **data["posts"]},
+            "inventory": {**inventory, **data["inventory"]},
+            "dwell_unmatched": sum(u["dwell_unmatched"] for u in users)}
+
+
 # ---- the public file ---------------------------------------------------------------------------------
 FULL_MARK = "local_full"   # key of the full file; the page shows a line for it and violations() refuses it
 # what a participant outside SPOT_PROFILE_CONDITIONS may hold in the public file

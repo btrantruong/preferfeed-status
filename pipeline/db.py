@@ -44,8 +44,9 @@ SQL_RECORD_COUNTS = ("SELECT r.user_id, count(*) AS n FROM record_entry r "
                      "JOIN unnest(CAST(:uids AS integer[]), CAST(:since AS bigint[])) AS t(uid, since) "
                      "ON r.user_id = t.uid AND r.timestamp_server >= t.since "
                      "WHERE r.record_id >= :lo GROUP BY r.user_id")
-SQL_ACTIVE = ("SELECT ((timestamp_server - :launch) / :bin) AS b, count(DISTINCT user_id) AS n "
-              "FROM record_entry WHERE record_id >= :lo AND timestamp_server >= :from GROUP BY 1")
+SQL_ACTIVE = ("SELECT ((r.timestamp_server - :launch) / :bin) AS b, count(DISTINCT r.user_id) AS n "
+              "FROM record_entry r JOIN visited_users u ON u.id = r.user_id "
+              "WHERE r.record_id >= :lo AND r.timestamp_server >= :from AND u.created_at >= :since GROUP BY 1")
 SQL_SPOT = ("SELECT a.user_id, a.endpoint, a.timestamp_server, "
             "NULLIF(a.algo_state->>'request_index', '')::int AS request_index, "
             "a.algo_state->>'phase' AS phase, a.algo_state->>'draw' AS draw, "
@@ -250,14 +251,14 @@ class LiveSource:
         got = {int(u): int(n) for u, n in zip(df["user_id"], df["n"])}
         return {int(u): got.get(int(u), 0) for u in thresholds["user_id"]}
 
-    def active(self, cc, launch_ms, from_ms, bin_ms):
-        """DataFrame bin_ms (bin start), n_active: distinct participants with a record row in the bin, for
-        the bins that start at or after from_ms."""
+    def active(self, cc, launch_ms, from_ms, bin_ms, since_ms):
+        """DataFrame bin_ms (bin start), n_active: distinct participants created at or after since_ms with a record
+        row in the bin, for the bins that start at or after from_ms."""
         lo = self.record_id_at(cc, int(from_ms) - 60_000)
         if lo is None:
             return pd.DataFrame(columns=["bin_ms", "n_active"])
         df = self.query(cc, SQL_ACTIVE, {"launch": int(launch_ms), "bin": int(bin_ms), "lo": lo,
-                                         "from": int(from_ms)})
+                                         "from": int(from_ms), "since": int(since_ms)})
         return pd.DataFrame({"bin_ms": int(launch_ms) + df["b"].astype("int64") * int(bin_ms),
                              "n_active": df["n"].astype("int64")})
 
@@ -322,9 +323,10 @@ class ExportSource:
         got = rec[ok].groupby("user_id").size().to_dict()
         return {int(u): int(got.get(u, 0)) for u in thresholds["user_id"]}
 
-    def active(self, cc, launch_ms, from_ms, bin_ms):
+    def active(self, cc, launch_ms, from_ms, bin_ms, since_ms):
+        v = self._read(cc, "visited_users", ["id", "created_at"])
         rec = self._read(cc, "record_entry", ["user_id", "timestamp_server"])
-        rec = rec[rec["timestamp_server"] >= from_ms]
+        rec = rec[(rec["timestamp_server"] >= from_ms) & rec["user_id"].isin(v.loc[v["created_at"] >= since_ms, "id"])]
         b = int(launch_ms) + ((rec["timestamp_server"] - launch_ms) // bin_ms) * bin_ms
         g = rec.groupby(b)["user_id"].nunique()
         return pd.DataFrame({"bin_ms": g.index.astype("int64"), "n_active": g.values.astype("int64")})

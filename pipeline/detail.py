@@ -97,13 +97,14 @@ def record_attempts(source, cc, launch_ms, cache, chunk_ids, save=None):
 
 
 def active_bins(source, cc, launch_ms, bin_ms, cache, pulled_ms, session_min, first_ms=None):
-    """DataFrame bin_ms, n_active for all bins since the country's launch (first_ms; default launch_ms); bins are
-    on the grid of launch_ms; bins that ended long enough ago come from the cache."""
+    """DataFrame bin_ms, n_active for all bins since the country's launch (first_ms; default launch_ms), counting
+    participants created since that launch; bins are on the grid of launch_ms; bins that ended long enough ago come
+    from the cache."""
     first = launch_ms if first_ms is None else launch_ms + ((first_ms - launch_ms) // bin_ms) * bin_ms
     c = cache["active"].setdefault(cc, {"final_until": first, "bins": {}})
     safe = pulled_ms - session_min * 60_000
     start = int(c["final_until"])
-    fresh = source.active(cc, launch_ms, start, bin_ms)
+    fresh = source.active(cc, launch_ms, start, bin_ms, launch_ms if first_ms is None else first_ms)
     for b, n in zip(fresh["bin_ms"], fresh["n_active"]):
         c["bins"][str(int(b))] = int(n)
     # bins that ended before `safe` are final

@@ -77,6 +77,8 @@ def main(argv=None):
                        "failed": result["failures"]})
         print(f"pulled_at {meta['pulled_at']} on {cfg.machine}, launch {meta['launch']}")
         print(aggregate.summary_table(result).to_string(index=False))
+        if result["ended"]:
+            print(f"ended (END_BY_COUNTRY, not contacted; the page keeps their published data): {', '.join(result['ended'])}")
         for cc, err in result["failures"].items():
             as_of = meta["countries"][cc]["as_of"]
             print(f"failed {cc}: {err} (page keeps data as of {as_of})")

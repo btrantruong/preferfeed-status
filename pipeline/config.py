@@ -14,7 +14,8 @@ LOCAL_KEYS = ["MACHINE", "PFDA_DIR", "CREDS", "OUTDIR"]
 OPTIONAL_LOCAL_KEYS = {"INVENTORY_FILE": "", "SOURCE": "live", "PULLED_AT": "", "IDS_FILE": ""}
 # Optional shared keys (config.env or --set). PULL_COUNTRIES: the countries queried in this run (a subset of
 # COUNTRIES; empty = all). LAUNCH_BY_COUNTRY: label:time pairs for countries that launch later than LAUNCH.
-OPTIONAL_SHARED_KEYS = {"PULL_COUNTRIES": "", "LAUNCH_BY_COUNTRY": ""}
+# END_BY_COUNTRY: label:time pairs; a run at or after that time does not contact the country.
+OPTIONAL_SHARED_KEYS = {"PULL_COUNTRIES": "", "LAUNCH_BY_COUNTRY": "", "END_BY_COUNTRY": ""}
 
 # Chart and detail-pull parameters: key -> (kind, default). config.env may set any of them; a key that is
 # missing there takes the default, so an older config.env keeps working. They are copied to meta.json
@@ -122,14 +123,30 @@ class Config:
     pulled_at: str = ""       # ISO time of the pull, replay only
     pull_countries: list = field(default_factory=list)       # queried in this run; empty = every country
     launch_by_country: dict = field(default_factory=dict)    # country -> naive launch time (in tz) if later than launch
+    end_by_country: dict = field(default_factory=dict)       # country -> naive end time (in tz) of its fielding
+    ended: list = field(default_factory=list)                # countries past their end at this run (ended_at)
 
     def pulled_countries(self):
         """Countries queried in this run, in the order of `countries`."""
-        return [c for c in self.countries if not self.pull_countries or c in self.pull_countries]
+        return [c for c in self.countries
+                if (not self.pull_countries or c in self.pull_countries) and c not in self.ended]
+
+    def ended_at(self, now_ms):
+        """Countries whose END_BY_COUNTRY time is at or before now_ms, in the order of `countries`."""
+        return [c for c in self.countries
+                if c in self.end_by_country and to_ms(self.end_by_country[c], self.tz) <= now_ms]
 
     def launch_of(self, cc):
         """Launch time of one country (naive, in tz): its own entry or the shared LAUNCH."""
         return self.launch_by_country.get(cc, self.launch)
+
+
+def to_ms(time, tz):
+    """Epoch milliseconds of an ISO time; a naive time is read in tz."""
+    import pandas as pd
+    ts = pd.Timestamp(time)
+    ts = ts.tz_localize(tz) if ts.tzinfo is None else ts
+    return ts.value // 1_000_000
 
 
 def read_env_file(path):
@@ -228,6 +245,7 @@ def load(pipeline_dir, overrides=None):
         pulled_at=optional["PULLED_AT"],
         pull_countries=[c.upper() for c in parse_list(optional["PULL_COUNTRIES"])],
         launch_by_country={k.upper(): v for k, v in parse_map(optional["LAUNCH_BY_COUNTRY"]).items()},
+        end_by_country={k.upper(): v for k, v in parse_map(optional["END_BY_COUNTRY"]).items()},
     )
     validate(cfg)
     return cfg
@@ -252,6 +270,12 @@ def validate(cfg):
     for cc, t in cfg.launch_by_country.items():
         if pd.Timestamp(t) < first:
             raise ValueError(f"LAUNCH_BY_COUNTRY {cc} {t} is before LAUNCH {cfg.launch}; LAUNCH is the earliest launch")
+    bad = [c for c in cfg.end_by_country if c not in cfg.countries]
+    if bad:
+        raise ValueError(f"END_BY_COUNTRY has {bad}, which are not in COUNTRIES {cfg.countries}")
+    for cc, t in cfg.end_by_country.items():
+        if to_ms(t, cfg.tz) <= to_ms(cfg.launch_of(cc), cfg.tz):
+            raise ValueError(f"END_BY_COUNTRY {cc} {t} is not after its launch {cfg.launch_of(cc)}")
     # Row-level files must never land in the public repo.
     if is_inside(cfg.outdir, cfg.site_dir):
         raise ValueError(f"OUTDIR {cfg.outdir} is inside the site repo {cfg.site_dir}")

@@ -1,6 +1,7 @@
 # preferFeed fielding status
 
 Changelog
+- 2026-11-26: countries can be closed with `END_BY_COUNTRY` (not contacted afterwards, published data stays); DE, FR and PL are counted from 26 Nov 13:15.
 - 2026-11-26: each pull writes a full local spot check file and the filtered public one; `preview.py --full` shows the full one locally; publishing checks the spot file and removes a public copy that holds private fields.
 - 2026-11-26: panel E is one page of stacked trajectory panels (batch sums, batch means per dimension, rewards, u_short, u_long) with an alignment toggle; rewards and profile are published only for the conditions in `SPOT_PROFILE_CONDITIONS` (attention and random).
 - 2026-11-26: panel A: outcome tree without the cancelled status (done by first try or retry, in session, left by errors and retries) and a new retries figure; `outcome_bins.csv` and `retries.csv` replace `attempts.csv`.
@@ -68,7 +69,7 @@ All files are aggregate counts; only non-zero rows are listed; `bin_start` is UT
 | `requests_hist.csv` | done participants by requests | bin_start, country, condition, requests, n | dc3 |
 | `requests_diff_hist.csv` | done participants by requests minus viewed_posts / batch size | bin_start, country, condition, diff, n | dc3 |
 | `algo_calls.csv` | algo_exchange rows in an event bin | bin_start, country, endpoint, n | ap1 |
-| `active.csv` | active participants in an event bin | bin_start, country, n_active | ap1 |
+| `active.csv` | active participants (created since the launch of their country) in an event bin | bin_start, country, n_active | ap1 |
 | `warmup.csv` | next_batch exchanges of non-RANDOM participants | bin_start, country, condition, request_index, n, n_algorithm | ap2 |
 
 Definitions that go beyond the status page: in `retries.csv` an attempt runs from one restart to the next, `trigger` is the type of the last error of the attempt that the last restart ended (none if nothing was logged), and `retries` is capped at `attempts_max` - 1. Flags are evaluated on the final attempt of each done participant (the logic of check_user() in daily_check.py; never_left_warmup uses algo_state.phase). Details of error entries are published only if they are an exception class name (SERVER_ERROR) or HTTP followed by three digits (client codes); everything else is published as other.
