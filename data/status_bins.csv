@@ -234,9 +234,8 @@ bin_start,country,status,reason,n
 2026-11-26T17:45:00Z,PL,done,done,2
 2026-11-26T17:45:00Z,PL,incomplete,error_logged,2
 2026-11-26T18:00:00Z,DE,incomplete,no_error,1
-2026-11-26T18:00:00Z,FR,cancelled,idle,1
 2026-11-26T18:00:00Z,FR,done,done,3
-2026-11-26T18:00:00Z,FR,incomplete,error_logged,1
+2026-11-26T18:00:00Z,FR,incomplete,error_logged,2
 2026-11-26T18:00:00Z,FR,incomplete,no_error,2
 2026-11-26T18:00:00Z,PL,done,done,2
 2026-11-26T18:00:00Z,PL,incomplete,error_logged,4
@@ -262,5 +261,7 @@ bin_start,country,status,reason,n
 2026-11-26T20:00:00Z,PL,incomplete,no_error,1
 2026-11-26T20:15:00Z,DE,done,done,1
 2026-11-26T20:15:00Z,FR,done,done,1
-2026-11-26T20:30:00Z,FR,incomplete,in_session,1
-2026-11-26T20:30:00Z,PL,incomplete,in_session,1
+2026-11-26T20:30:00Z,FR,done,done,1
+2026-11-26T20:30:00Z,PL,done,done,1
+2026-11-26T20:45:00Z,DE,incomplete,in_session,1
+2026-11-26T20:45:00Z,FR,incomplete,in_session,2
