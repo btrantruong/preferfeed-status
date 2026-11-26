@@ -787,7 +787,6 @@ bin_start,country,condition,measure,group,dur_bin,n,sum_min
 2026-11-26T15:45:00Z,DE,ATTENTION,total,not_done,7,1,6.951
 2026-11-26T15:45:00Z,DE,PREFERENCE,final_attempt,done,11,1,10.137
 2026-11-26T15:45:00Z,DE,PREFERENCE,final_attempt,done,8,2,14.417
-2026-11-26T15:45:00Z,DE,PREFERENCE,final_attempt,not_done,0,1,0.089
 2026-11-26T15:45:00Z,DE,PREFERENCE,total,done,11,1,10.137
 2026-11-26T15:45:00Z,DE,PREFERENCE,total,done,8,2,14.417
 2026-11-26T15:45:00Z,DE,PREFERENCE,total,not_done,3,1,2.019
@@ -1347,7 +1346,7 @@ bin_start,country,condition,measure,group,dur_bin,n,sum_min
 2026-11-26T21:00:00Z,PL,ATTENTION,total,not_done,0,1,0.006
 2026-11-26T21:00:00Z,PL,PREFERENCE,final_attempt,done,8,1,7.25
 2026-11-26T21:00:00Z,PL,PREFERENCE,total,done,8,1,7.25
-2026-11-26T21:15:00Z,DE,RANDOM,final_attempt,not_done,6,1,5.253
-2026-11-26T21:15:00Z,DE,RANDOM,total,not_done,6,1,5.253
+2026-11-26T21:15:00Z,DE,RANDOM,final_attempt,done,10,1,9.983
+2026-11-26T21:15:00Z,DE,RANDOM,total,done,10,1,9.983
 2026-11-26T21:15:00Z,PL,ATTENTION,final_attempt,not_done,2,1,1.505
 2026-11-26T21:15:00Z,PL,ATTENTION,total,not_done,2,1,1.505
