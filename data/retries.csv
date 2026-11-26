@@ -142,8 +142,9 @@ bin_start,country,trigger,retries,retry_outcome,n
 2026-11-26T16:45:00Z,DE,reload,2,done,1
 2026-11-26T16:45:00Z,FR,none,1,left_no_final_error,3
 2026-11-26T16:45:00Z,FR,none,3,done,1
+2026-11-26T16:45:00Z,FR,none,3,in_session,1
 2026-11-26T16:45:00Z,FR,none,3,left_final_error,2
-2026-11-26T16:45:00Z,FR,none,3,left_no_final_error,4
+2026-11-26T16:45:00Z,FR,none,3,left_no_final_error,3
 2026-11-26T16:45:00Z,FR,reload,1,left_no_final_error,1
 2026-11-26T16:45:00Z,PL,none,1,done,2
 2026-11-26T16:45:00Z,PL,none,1,left_no_final_error,1
