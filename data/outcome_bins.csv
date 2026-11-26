@@ -68,4 +68,8 @@ bin_start,country,outcome,last_error,n
 2026-11-26T12:00:00Z,DE,done_first,none,1
 2026-11-26T12:00:00Z,DE,left_no_error,none,1
 2026-11-26T12:00:00Z,UK,left_no_error,none,1
-2026-11-26T12:30:00Z,DE,in_session,none,3
+2026-11-26T12:30:00Z,DE,done_first,none,3
+2026-11-26T12:30:00Z,DE,in_session,none,22
+2026-11-26T12:30:00Z,DE,left_no_error_retried,none,2
+2026-11-26T12:30:00Z,FR,in_session,none,16
+2026-11-26T12:30:00Z,PL,in_session,none,3

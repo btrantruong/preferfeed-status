@@ -66,4 +66,7 @@ bin_start,country,status,reason,n
 2026-11-26T12:00:00Z,DE,done,done,1
 2026-11-26T12:00:00Z,DE,incomplete,no_error,1
 2026-11-26T12:00:00Z,UK,incomplete,no_error,1
-2026-11-26T12:30:00Z,DE,incomplete,in_session,3
+2026-11-26T12:30:00Z,DE,done,done,3
+2026-11-26T12:30:00Z,DE,incomplete,in_session,24
+2026-11-26T12:30:00Z,FR,incomplete,in_session,16
+2026-11-26T12:30:00Z,PL,incomplete,in_session,3
