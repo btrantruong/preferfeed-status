@@ -147,5 +147,5 @@ bin_start,country,condition,measure,group,dur_bin,n,sum_min
 2026-11-25T23:45:00Z,UK,PREFERENCE,total,done,8,1,7.019
 2026-11-26T09:00:00Z,UK,PREFERENCE,final_attempt,done,9,1,8.439
 2026-11-26T09:00:00Z,UK,PREFERENCE,total,done,9,1,8.439
-2026-11-26T09:45:00Z,DE,RANDOM,final_attempt,not_done,5,1,4.086
-2026-11-26T09:45:00Z,DE,RANDOM,total,not_done,5,1,4.086
+2026-11-26T09:45:00Z,DE,RANDOM,final_attempt,done,11,1,10.026
+2026-11-26T09:45:00Z,DE,RANDOM,total,done,11,1,10.026
