@@ -66,7 +66,13 @@ bin_start,country,status,reason,n
 2026-11-26T12:00:00Z,DE,done,done,1
 2026-11-26T12:00:00Z,DE,incomplete,no_error,1
 2026-11-26T12:00:00Z,UK,incomplete,no_error,1
-2026-11-26T12:30:00Z,DE,done,done,3
-2026-11-26T12:30:00Z,DE,incomplete,in_session,24
-2026-11-26T12:30:00Z,FR,incomplete,in_session,16
-2026-11-26T12:30:00Z,PL,incomplete,in_session,3
+2026-11-26T12:30:00Z,DE,done,done,21
+2026-11-26T12:30:00Z,DE,incomplete,error_logged,1
+2026-11-26T12:30:00Z,DE,incomplete,in_session,5
+2026-11-26T12:30:00Z,FR,done,done,6
+2026-11-26T12:30:00Z,FR,incomplete,in_session,10
+2026-11-26T12:30:00Z,PL,done,done,1
+2026-11-26T12:30:00Z,PL,incomplete,in_session,2
+2026-11-26T12:45:00Z,DE,incomplete,in_session,15
+2026-11-26T12:45:00Z,FR,incomplete,in_session,10
+2026-11-26T12:45:00Z,PL,incomplete,in_session,6
