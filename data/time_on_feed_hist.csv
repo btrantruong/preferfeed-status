@@ -1353,5 +1353,7 @@ bin_start,country,condition,measure,group,dur_bin,n,sum_min
 2026-11-26T21:15:00Z,PL,ATTENTION,total,not_done,2,1,1.505
 2026-11-26T21:45:00Z,FR,RANDOM,final_attempt,done,8,1,7.143
 2026-11-26T21:45:00Z,FR,RANDOM,total,done,8,1,7.143
-2026-11-26T22:00:00Z,DE,RANDOM,final_attempt,not_done,5,1,4.743
-2026-11-26T22:00:00Z,DE,RANDOM,total,not_done,5,1,4.743
+2026-11-26T22:00:00Z,DE,RANDOM,final_attempt,done,11,1,10.16
+2026-11-26T22:00:00Z,DE,RANDOM,final_attempt,not_done,8,1,7.741
+2026-11-26T22:00:00Z,DE,RANDOM,total,done,11,1,10.16
+2026-11-26T22:00:00Z,DE,RANDOM,total,not_done,8,1,7.741
