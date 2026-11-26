@@ -537,4 +537,8 @@ bin_start,country,endpoint,n
 2026-11-26T18:20:00Z,PL,next_batch,5
 2026-11-26T18:25:00Z,FR,next_batch,4
 2026-11-26T18:25:00Z,PL,init,2
-2026-11-26T18:25:00Z,PL,next_batch,1
+2026-11-26T18:25:00Z,PL,next_batch,2
+2026-11-26T18:30:00Z,FR,init,3
+2026-11-26T18:30:00Z,FR,next_batch,2
+2026-11-26T18:30:00Z,PL,init,1
+2026-11-26T18:30:00Z,PL,next_batch,1
