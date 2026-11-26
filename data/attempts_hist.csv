@@ -88,3 +88,4 @@ bin_start,country,attempt_no,ends_as,dur_bin,n,sum_min
 2026-11-25T22:15:00Z,UK,1,incomplete,3,1,2.545
 2026-11-25T23:45:00Z,UK,1,done,8,1,7.019
 2026-11-26T09:00:00Z,UK,1,done,9,1,8.439
+2026-11-26T09:45:00Z,DE,1,incomplete,5,1,4.086
