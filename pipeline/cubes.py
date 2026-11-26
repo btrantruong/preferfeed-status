@@ -37,6 +37,8 @@ class Inputs:
     launch_ms: int
     p: dict            # Config.params
     bin_minutes: int
+    attempts: Optional[pd.DataFrame] = None   # sessions.attempts_table (detail pull) or None
+    sessions: Optional[pd.DataFrame] = None   # sessions.participants_table or None
 
 
 @dataclass(frozen=True)
@@ -255,6 +257,63 @@ def warmup(i):
         ["bin_start", "country", "condition", "request_index"]).reset_index(drop=True)
 
 
+# ---- sessions: in session or left, time on the feed, attempt durations (detail pull) -------------------
+def dur_bin(minutes, edges_s):
+    """Bin of a duration: 0 below the first edge, k from the k-th edge on, len(edges) for the open last bin."""
+    return np.searchsorted(np.asarray(edges_s, dtype="float64"), np.asarray(minutes, dtype="float64") * 60, side="right").astype(int)
+
+
+def _sessions(i):
+    s = i.sessions
+    return None if s is None or s.empty or "state" not in s else s
+
+
+def session_state(i):
+    cols = ["bin_start", "country", "condition", "state", "n", "n_disagree"]
+    s = _sessions(i)
+    if s is None:
+        return pd.DataFrame(columns=cols)
+    d = s.assign(bin_ms=s["created_bin"], condition=s["condition"].fillna("unknown"), n_disagree=s["disagree"].astype(int))
+    g = d.groupby(["bin_ms", "country", "condition", "state"]).agg(n=("state", "size"), n_disagree=("n_disagree", "sum")).reset_index()
+    g["bin_start"] = iso(g["bin_ms"])
+    return g[cols].sort_values(cols[:4]).reset_index(drop=True)
+
+
+def time_on_feed_hist(i):
+    cols = ["bin_start", "country", "condition", "measure", "group", "dur_bin", "n", "sum_min"]
+    s = _sessions(i)
+    if s is None:
+        return pd.DataFrame(columns=cols)
+    d = s[s["last_record_ms"].notna() & (s["n_attempts"] >= 1)]
+    parts = []
+    for measure, col in (("final_attempt", "final_min"), ("total", "total_min")):
+        x = d[d[col].notna()]
+        parts.append(pd.DataFrame({"bin_ms": x["created_bin"], "country": x["country"], "condition": x["condition"].fillna("unknown"),
+                                   "measure": measure, "group": np.where(x["status"] == "done", "done", "not_done"),
+                                   "dur_bin": dur_bin(x[col], i.p["duration_edges_s"]), "min": x[col]}))
+    d = pd.concat(parts, ignore_index=True)
+    if d.empty:
+        return pd.DataFrame(columns=cols)
+    g = d.groupby(["bin_ms", "country", "condition", "measure", "group", "dur_bin"]).agg(n=("min", "size"), sum_min=("min", "sum")).reset_index()
+    g["bin_start"] = iso(g["bin_ms"]); g["sum_min"] = g["sum_min"].round(3)
+    return g[cols].sort_values(cols[:6]).reset_index(drop=True)
+
+
+def attempts_hist(i):
+    cols = ["bin_start", "country", "attempt_no", "ends_as", "dur_bin", "n", "sum_min"]
+    s = _sessions(i)
+    if i.attempts is None or i.attempts.empty or s is None:
+        return pd.DataFrame(columns=cols)
+    a = i.attempts[i.attempts["duration_min"].notna()].merge(s[["country", "user_id", "created_bin"]], on=["country", "user_id"])
+    if a.empty:
+        return pd.DataFrame(columns=cols)
+    a = a.assign(bin_ms=a["created_bin"], attempt_no=np.minimum(a["attempt"], i.p["attempts_max"]).astype(int),
+                 dur_bin=dur_bin(a["duration_min"], i.p["duration_edges_s"]))
+    g = a.groupby(["bin_ms", "country", "attempt_no", "ends_as", "dur_bin"]).agg(n=("duration_min", "size"), sum_min=("duration_min", "sum")).reset_index()
+    g["bin_start"] = iso(g["bin_ms"]); g["sum_min"] = g["sum_min"].round(3)
+    return g[cols].sort_values(cols[:5]).reset_index(drop=True)
+
+
 REGISTRY = [
     Spec("status_bins.csv", "created", ["bin_start", "country", "status", "reason", "n"], status_bins, "core"),
     Spec("status_detail.csv", "created",
@@ -277,6 +336,12 @@ REGISTRY = [
     Spec("active.csv", "event", ["bin_start", "country", "n_active"], active, "full"),
     Spec("warmup.csv", "created",
          ["bin_start", "country", "condition", "request_index", "n", "n_algorithm"], warmup, "detail"),
+    Spec("session_state.csv", "created", ["bin_start", "country", "condition", "state", "n", "n_disagree"],
+         session_state, "detail"),
+    Spec("time_on_feed_hist.csv", "created",
+         ["bin_start", "country", "condition", "measure", "group", "dur_bin", "n", "sum_min"], time_on_feed_hist, "detail"),
+    Spec("attempts_hist.csv", "created", ["bin_start", "country", "attempt_no", "ends_as", "dur_bin", "n", "sum_min"],
+         attempts_hist, "detail"),
 ]
 BY_NAME = {s.name: s for s in REGISTRY}
 FILE_NAMES = [s.name for s in REGISTRY]

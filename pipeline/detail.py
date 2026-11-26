@@ -30,6 +30,7 @@ def load_cache(outdir):
         c = {}
     c.setdefault("records", {})
     c.setdefault("active", {})
+    c.setdefault("rec_attempts", {})
     return c
 
 
@@ -64,6 +65,37 @@ def count_records(source, cc, thresholds, cache, pulled_ms, session_min):
     return out
 
 
+def record_attempts(source, cc, launch_ms, cache, chunk_ids, save=None):
+    """DataFrame country-less user_id, attempt, n_records, first_record_ms, last_record_ms of every participant since
+    the launch, read incrementally: the cache keeps the aggregates and the record_id already read (hwm), a run reads
+    only the ids above it, in chunks of chunk_ids, and saves after each chunk (so a first run that is stopped resumes).
+    record_id rises with time, so adding the new rows to the aggregates is exact, also for a restart after a long gap."""
+    sec = cache["rec_attempts"].get(cc)
+    if sec is None or sec.get("launch_ms") != int(launch_ms):
+        sec = cache["rec_attempts"][cc] = {"launch_ms": int(launch_ms), "hwm": None, "rows": {}}
+    if sec["hwm"] is None:
+        lo = source.record_id_at(cc, int(launch_ms) - 60_000)
+        if lo is None:      # no record since the launch
+            return pd.DataFrame(columns=["user_id", "attempt", "n_records", "first_record_ms", "last_record_ms"])
+        sec["hwm"] = int(lo) - 1
+    hi = source.record_id_max(cc)
+    while hi is not None and sec["hwm"] < hi:
+        upto = min(sec["hwm"] + int(chunk_ids), hi)
+        df = source.record_attempts(cc, sec["hwm"], upto)
+        for r in df.itertuples():
+            k = f"{int(r.user_id)}:{int(r.attempt)}"
+            e = sec["rows"].get(k)
+            if e is None:
+                sec["rows"][k] = [int(r.n_records), int(r.first_record_ms), int(r.last_record_ms)]
+            else:
+                sec["rows"][k] = [e[0] + int(r.n_records), min(e[1], int(r.first_record_ms)), max(e[2], int(r.last_record_ms))]
+        sec["hwm"] = upto
+        if save:
+            save()
+    rows = [(int(k.split(":")[0]), int(k.split(":")[1]), *v) for k, v in sec["rows"].items()]
+    return pd.DataFrame(rows, columns=["user_id", "attempt", "n_records", "first_record_ms", "last_record_ms"])
+
+
 def active_bins(source, cc, launch_ms, bin_ms, cache, pulled_ms, session_min, first_ms=None):
     """DataFrame bin_ms, n_active for all bins since the country's launch (first_ms; default launch_ms); bins are
     on the grid of launch_ms; bins that ended long enough ago come from the cache."""
@@ -79,7 +111,7 @@ def active_bins(source, cc, launch_ms, bin_ms, cache, pulled_ms, session_min, fi
     return pd.DataFrame({"bin_ms": [int(b) for b in c["bins"]], "n_active": list(c["bins"].values())})
 
 
-def run_country(source, cfg, cc, P_cc, launch_ms, end_ms, pulled_ms, cache, mode, cc_launch_ms=None):
+def run_country(source, cfg, cc, P_cc, launch_ms, end_ms, pulled_ms, cache, mode, cc_launch_ms=None, save=None):
     """Detail rows of one country. Returns dict ex (with attempt ids), starts, final_start, counts, active.
     Raises on a failed query (the caller marks the country failed)."""
     p = cfg.params
@@ -100,17 +132,20 @@ def run_country(source, cfg, cc, P_cc, launch_ms, end_ms, pulled_ms, cache, mode
         active = active_bins(source, cc, launch_ms, p["event_bin_minutes"] * 60_000, cache, pulled_ms, cfg.session_min,
                              first_ms=cc_launch_ms)
         active["country"] = cc
+    rec = record_attempts(source, cc, cc_launch_ms, cache, cfg.params["record_chunk_ids"], save)
+    rec.insert(0, "country", cc)
     return {"ex": seg, "starts": starts, "final_start": final_start,
-            "counts": {(cc, u): n for u, n in counts.items()}, "active": active}
+            "counts": {(cc, u): n for u, n in counts.items()}, "active": active, "rec_attempts": rec}
 
 
 def empty_result():
     ex = pd.DataFrame({c: pd.Series(dtype="object") for c in checks.EX_COLUMNS})
     ex["attempt_id"] = pd.Series(dtype="int64"); ex["final_attempt"] = pd.Series(dtype="int64")
-    return {"ex": ex, "starts": pd.Series(dtype="float64"), "final_start": {}, "counts": {}, "active": None}
+    return {"ex": ex, "starts": pd.Series(dtype="float64"), "final_start": {}, "counts": {}, "active": None,
+            "rec_attempts": pd.DataFrame(columns=["country", "user_id", "attempt", "n_records", "first_record_ms", "last_record_ms"])}
 
 
-def run(cfg, source, P, launch_ms, end_ms, pulled_ms, ok_countries, cache, launch_cc=None):
+def run(cfg, source, P, launch_ms, end_ms, pulled_ms, ok_countries, cache, launch_cc=None, save=None):
     """All countries. Returns (results {cc: dict}, status {cc: ok|failed|off|not_pulled}, errors {cc: message}).
     launch_cc: {cc: launch in ms} for countries that launch later than launch_ms."""
     launch_cc = launch_cc or {}
@@ -129,7 +164,7 @@ def run(cfg, source, P, launch_ms, end_ms, pulled_ms, ok_countries, cache, launc
             continue
         try:
             results[cc] = run_country(source, cfg, cc, P[P["country"] == cc], launch_ms, end_ms, pulled_ms, cache, mode,
-                                       launch_cc.get(cc))
+                                       launch_cc.get(cc), save)
             status[cc] = "ok"
         except Exception as e:  # a detail failure must not stop the core files; class name only, no host
             status[cc] = "failed"

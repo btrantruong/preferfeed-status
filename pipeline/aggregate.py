@@ -24,6 +24,8 @@ import classify as C
 import cubes
 import db
 import detail as D
+import report as R
+import sessions as SS
 import spot as S
 
 SPOT_FILE = "spot_users.json"
@@ -234,7 +236,7 @@ def assemble(cfg, inputs, core_ok, attempt_ok, detail_status, prev_meta, prev_fr
 
 
 def build_meta(cfg, pulled_ms, launch_at_ms, status, detail_status, detail_prev, files_info, participants,
-               launch_cc_iso=None, spot=None):
+               launch_cc_iso=None, spot=None, sessions=None):
     pulled_iso = iso_utc(pulled_ms)
     n_by_c = participants.groupby("country").size().to_dict() if not participants.empty else {}
     countries = {}
@@ -270,6 +272,7 @@ def build_meta(cfg, pulled_ms, launch_at_ms, status, detail_status, detail_prev,
         "params": {k.lower(): cfg.params[k.lower()] for k in __import__("config").PAGE_PARAMS},
         "flow_nodes": cubes.FLOW_NODES,
         "files": files_info,
+        "sessions": sessions,   # T_ref and its source for the in session / left rule, or None
         "spot": spot,   # panel D: {"as_of", "n_users"} of the published spot_users.json, or None
     }
 
@@ -318,6 +321,34 @@ def write_spot(cfg, source, P, ex_all, detail_status, outdir):
         return f"failed: {type(e).__name__}", 0
 
 
+# ---- ids report (local only) -------------------------------------------------------------------------
+def read_ids(path):
+    """Yougov ids of a file, one per line, in order and without duplicates."""
+    with open(path) as fh:
+        return list(dict.fromkeys(l.strip() for l in fh if l.strip()))
+
+
+def write_ids_report(cfg, source, sess, att, pulled_iso, ref, outdir):
+    """OUTDIR/ids_report.md for the ids of IDS_FILE; returns a note. yougov_id is read only for these ids."""
+    if not cfg.ids_file:
+        return "no IDS_FILE"
+    try:
+        ids = read_ids(cfg.ids_file)
+        found = []
+        for cc in cfg.pulled_countries():
+            m = source.yougov_ids(cc, ids)
+            if len(m):
+                found.append(m.assign(country=cc))
+        ymap = pd.concat(found, ignore_index=True) if found else pd.DataFrame(columns=["user_id", "yougov_id", "country"])
+        ids_df = ymap.merge(sess[["country", "user_id", "condition", "status", "total_min", "n_attempts"]], on=["country", "user_id"])
+        stops = list(cfg.stop_codes.values())
+        text = R.build_report(ids, ids_df, att, sess, pulled_iso, cfg.params["short_stay_s"], stops, ref)
+        write_atomic(os.path.join(outdir, "ids_report.md"), text)
+        return f"{len(ids_df)} of {len(ids)} ids found"
+    except Exception as e:  # the report must never fail a pull
+        return f"failed: {type(e).__name__}: {str(e)[:100]}"
+
+
 # ---- one run -----------------------------------------------------------------------------------------
 def run(cfg, pulled_ms=None, reader_cls=None):
     """One aggregation. Writes to cfg.outdir; returns a dict for the summary and the publish step."""
@@ -340,7 +371,8 @@ def run(cfg, pulled_ms=None, reader_cls=None):
     os.makedirs(cfg.outdir, exist_ok=True)
     cache = D.load_cache(cfg.outdir)
     end_ms = pulled_ms + 24 * 3600 * 1000
-    results, detail_status, detail_errors = D.run(cfg, source, P, launch_at_ms, end_ms, pulled_ms, core_ok, cache, launch_cc)
+    results, detail_status, detail_errors = D.run(cfg, source, P, launch_at_ms, end_ms, pulled_ms, core_ok, cache, launch_cc,
+                                                   save=lambda: D.save_cache(cfg.outdir, cache))
     if results:
         D.save_cache(cfg.outdir, cache)
     P = apply_attempts(P, errors_long, cfg, results)
@@ -348,8 +380,13 @@ def run(cfg, pulled_ms=None, reader_cls=None):
     ex_all = pd.concat([r["ex"] for r in results.values()], ignore_index=True) if results else None
     act = pd.concat([r["active"] for r in results.values() if r["active"] is not None], ignore_index=True) \
         if any(r["active"] is not None for r in results.values()) else None
+    att = sess = None
+    if results:
+        rec_all = pd.concat([r["rec_attempts"] for r in results.values()], ignore_index=True)
+        att = SS.attempts_table(P, ex_all, rec_all, errors_long)
+        sess = SS.participants_table(P[P["country"].isin(results)], att, pulled_ms, cfg.params)
     inputs = cubes.Inputs(P=P, events=errors_long, ex=ex_all, active=act, launch_ms=launch_at_ms,
-                          p=cfg.params, bin_minutes=cfg.bin_minutes)
+                          p=cfg.params, bin_minutes=cfg.bin_minutes, attempts=att, sessions=sess)
 
     attempt_ok = [cc for cc in core_ok if P[P["country"] == cc].empty or P.loc[P["country"] == cc, "attempt"].notna().any()]
     prev_meta, prev_frames = previous_published(cfg.site_dir)
@@ -363,8 +400,9 @@ def run(cfg, pulled_ms=None, reader_cls=None):
         spot_info = {"as_of": iso_utc(pulled_ms), "n_users": n_spot}
     else:   # nothing new: a copy published earlier stays (SPOT_PUBLISH on) or is removed (off)
         spot_info = (prev_meta or {}).get("spot") if published else None
+    ref = sess.attrs.get("reference") if sess is not None else None
     meta = build_meta(cfg, pulled_ms, launch_at_ms, status, detail_status, detail_prev, files_info, classified,
-                      launch_cc_iso, spot_info)
+                      launch_cc_iso, spot_info, ref)
 
     paths, sizes = {}, {}
     for name, frame in frames.items():
@@ -374,6 +412,11 @@ def run(cfg, pulled_ms=None, reader_cls=None):
     meta_path = os.path.join(cfg.outdir, "meta.json")
     write_atomic(meta_path, json.dumps(meta, indent=1) + "\n")
     write_atomic(os.path.join(cfg.outdir, "participants.csv"), P.drop(columns=["attempt"]).to_csv(index=False))
+    ids_note = "off"
+    if sess is not None:       # row level, local only
+        write_atomic(os.path.join(cfg.outdir, "participants_sessions.csv"), sess.drop(columns=["attempt"], errors="ignore").round(3).to_csv(index=False))
+        write_atomic(os.path.join(cfg.outdir, "attempts_local.csv"), att.round(3).to_csv(index=False))
+        ids_note = write_ids_report(cfg, source, sess, att, meta["pulled_at"], ref, cfg.outdir)
     remove = []
     if published and n_spot:
         paths[SPOT_FILE] = os.path.join(cfg.outdir, SPOT_FILE)
@@ -384,7 +427,7 @@ def run(cfg, pulled_ms=None, reader_cls=None):
         append_history(cfg.outdir, frames[PREV_COUNTRY_FILE], meta["pulled_at"], cfg.machine, meta["launch_utc"])
     return {"meta": meta, "meta_path": meta_path, "files": paths, "bins_path": paths.get(PREV_COUNTRY_FILE),
             "participants": classified, "failures": failures, "detail_status": detail_status,
-            "detail_errors": detail_errors, "sizes": sizes, "spot": spot_note, "remove": remove}
+            "detail_errors": detail_errors, "sizes": sizes, "spot": spot_note, "remove": remove, "ids_report": ids_note}
 
 
 def summary_table(result):

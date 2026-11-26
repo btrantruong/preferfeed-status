@@ -30,7 +30,7 @@ def write_export(folder, country="UK", exchanges=(), records=(), visited=()):
 
 
 def vrow(uid, created, done, cancelled, cond, errors=None, viewed=20):
-    return {"id": uid, "created_at": created, "done": done, "cancelled": cancelled, "started": True,
+    return {"id": uid, "yougov_id": f"v{uid}", "created_at": created, "done": done, "cancelled": cancelled, "started": True,
             "condition": cond, "viewed_posts": viewed, "errors": json.dumps(errors) if errors else None}
 
 

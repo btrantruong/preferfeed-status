@@ -11,7 +11,7 @@ SHARED_KEYS = ["LAUNCH", "TZ", "COUNTRIES", "CREDS_KEYS", "BIN_MINUTES", "SESSIO
                "SCRIPTS_URL", "GIT_REMOTE", "GIT_BRANCH"]
 LOCAL_KEYS = ["MACHINE", "PFDA_DIR", "CREDS", "OUTDIR"]
 # Optional per-machine keys (default in the second column; empty string = not set).
-OPTIONAL_LOCAL_KEYS = {"INVENTORY_FILE": "", "SOURCE": "live", "PULLED_AT": ""}
+OPTIONAL_LOCAL_KEYS = {"INVENTORY_FILE": "", "SOURCE": "live", "PULLED_AT": "", "IDS_FILE": ""}
 # Optional shared keys (config.env or --set). PULL_COUNTRIES: the countries queried in this run (a subset of
 # COUNTRIES; empty = all). LAUNCH_BY_COUNTRY: label:time pairs for countries that launch later than LAUNCH.
 OPTIONAL_SHARED_KEYS = {"PULL_COUNTRIES": "", "LAUNCH_BY_COUNTRY": ""}
@@ -43,6 +43,14 @@ PARAM_SPEC = {
     "SPOT_TEXT_MAX_CHARS": ("int", 2000),   # sp2: longer post texts are cut and marked
     "SPOT_PUBLISH": ("str", "on"),          # on: spot_users.json (panel D) is published with the data; off: it is not, and a published copy is removed
     "SPOT_DWELL_CAP_S": ("int", 30),        # sp2: dwell time (seconds) at which the point size stops growing
+    "DURATION_EDGES_S": ("intlist", "10,60,120,180,240,300,360,420,480,540,600,660,720,780,840,900"),   # time on the feed and attempt histograms: bin edges in seconds (bin 0 is below the first edge, the last bin is open)
+    "SESSION_SILENCE_S": ("int", 90),       # silence rule: a last record at most this old means in session
+    "SESSION_REF_QUANTILE": ("float", 0.95),  # T_ref: this quantile of entry to last record of done participants
+    "SESSION_REF_MIN_N": ("int", 30),       # done participants needed before T_ref comes from the data
+    "SESSION_REF_FALLBACK_MIN": ("float", 10.0),  # T_ref in minutes until then (the timeline's design length)
+    "SESSION_RULE": ("str", "time"),        # time or silence: which rule decides in_session or left
+    "RECORD_CHUNK_IDS": ("int", 200000),    # record_entry is read in id ranges of this size (first run, resumable)
+    "SHORT_STAY_S": ("intlist", "10,60"),   # ids report: stays shorter than these many seconds
     "DETAIL_TIMEOUT_S": ("int", 60),        # statement timeout of every detail query
     "DETAIL": ("str", "off"),               # off, basic (Q1, Q2, Q4) or full (adds Q3)
     "MAX_FILE_KB": ("int", 500),            # warning only
@@ -51,15 +59,19 @@ PARAM_SPEC = {
 PAGE_PARAMS = ["EVENT_BIN_MINUTES", "FLAG_BIN_MINUTES", "MIN_N_RATE", "RECORDS_BIN_WIDTH", "RECORDS_MAX",
                "REQUESTS_MAX", "BATCH_SIZE", "DIFF_RANGE", "ATTEMPTS_MAX", "ERROR_AGE_BIN_MIN",
                "ERROR_AGE_MAX_MIN", "SERVER_ERROR_CODE", "CLIENT_ERROR_CODES", "FLOW_STEPS",
-               "WARMUP_MAX_INDEX", "SPOT_MAX_USERS", "SPOT_DWELL_CAP_S"]
+               "WARMUP_MAX_INDEX", "SPOT_MAX_USERS", "SPOT_DWELL_CAP_S", "DURATION_EDGES_S", "SESSION_SILENCE_S", "SESSION_RULE", "SESSION_REF_QUANTILE"]
 DETAIL_MODES = ["off", "basic", "full"]
 
 
 def parse_param(kind, value):
     if kind == "int":
         return int(value)
+    if kind == "float":
+        return float(value)
     if kind == "list":
         return parse_list(value)
+    if kind == "intlist":
+        return [int(v) for v in parse_list(value)]
     return str(value)
 
 
@@ -93,7 +105,8 @@ class Config:
     outdir: str
     site_dir: str             # the preferfeed-status clone (parent of pipeline/)
     params: dict = field(default_factory=default_params)   # PARAM_SPEC keys in lower case, parsed
-    inventory_file: str = ""  # runtime inventory parquet for the spot check (local only)
+    inventory_file: str = ""  # runtime inventory parquet for the spot check
+    ids_file: str = ""        # yougov ids (one per line) for the local ids report; empty = no report
     source: str = "live"      # live or export:FOLDER (replay)
     pulled_at: str = ""       # ISO time of the pull, replay only
     pull_countries: list = field(default_factory=list)       # queried in this run; empty = every country
@@ -199,6 +212,7 @@ def load(pipeline_dir, overrides=None):
         site_dir=site_dir,
         params=params,
         inventory_file=expand(optional["INVENTORY_FILE"]) if optional["INVENTORY_FILE"] else "",
+        ids_file=expand(optional["IDS_FILE"]) if optional["IDS_FILE"] else "",
         source=optional["SOURCE"],
         pulled_at=optional["PULLED_AT"],
         pull_countries=[c.upper() for c in parse_list(optional["PULL_COUNTRIES"])],
@@ -255,6 +269,16 @@ def validate_params(cfg):
         raise ValueError("ERROR_AGE_MAX_MIN must be a multiple of ERROR_AGE_BIN_MIN")
     if p["detail"] not in DETAIL_MODES:
         raise ValueError(f"DETAIL must be one of {DETAIL_MODES}")
+    if p["session_rule"] not in ("time", "silence"):
+        raise ValueError("SESSION_RULE must be time or silence")
+    e = p["duration_edges_s"]
+    if not e or any(x <= 0 for x in e) or e != sorted(set(e)):
+        raise ValueError("DURATION_EDGES_S must be increasing positive seconds")
+    if not 0 < p["session_ref_quantile"] < 1 or p["session_ref_fallback_min"] <= 0:
+        raise ValueError("SESSION_REF_QUANTILE must be in (0, 1) and SESSION_REF_FALLBACK_MIN > 0")
+    for key in ("session_silence_s", "session_ref_min_n", "record_chunk_ids"):
+        if p[key] <= 0:
+            raise ValueError(f"{key.upper()} must be > 0")
     if p["spot_publish"] not in ("on", "off"):
         raise ValueError("SPOT_PUBLISH must be on or off")
     if p["spot_user"] and (":" not in p["spot_user"] or not p["spot_user"].split(":", 1)[1].isdigit()):

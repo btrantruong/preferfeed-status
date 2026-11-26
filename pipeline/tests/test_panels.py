@@ -158,3 +158,23 @@ def test_detail_skips_countries_not_pulled(tmp_path):
     res = aggregate.run(cfg)
     assert res["detail_status"] == {"UK": "ok", "DE": "not_pulled"}
     assert res["meta"]["countries"]["DE"]["status"] == "not_pulled" and res["meta"]["detail"]["DE"]["status"] == "not_pulled"
+
+
+def test_session_files_and_local_ids_report(tmp_path):
+    import publish
+    cfg = scenario(tmp_path)
+    ids = tmp_path / "ids.txt"
+    ids.write_text("v2\nv3\nvnone\n")                                    # user 2 restarted, user 3 has no records, one id is unknown
+    cfg = dataclasses.replace(cfg, ids_file=str(ids))
+    res = aggregate.run(cfg)
+    assert res["ids_report"] == "2 of 3 ids found"
+    text = open(os.path.join(cfg.outdir, "ids_report.md")).read()
+    assert "vnone" in text and "v2" in text and "Stayed less than 60 seconds" in text
+    for f in ("session_state.csv", "time_on_feed_hist.csv", "attempts_hist.csv"):
+        assert f in res["files"] and f in publish.DATA_FILES
+    for local in ("ids_report.md", "participants_sessions.csv", "attempts_local.csv"):
+        assert os.path.isfile(os.path.join(cfg.outdir, local)) and local not in res["files"] and local not in publish.DATA_FILES
+    assert res["meta"]["sessions"]["source"] in ("launch", "fallback")
+    (tmp_path / "o").mkdir()
+    off = aggregate.run(scenario(tmp_path / "o", "off"))          # DETAIL=off: no session files, no report
+    assert "session_state.csv" not in off["files"] and off["ids_report"] == "off" and off["meta"]["sessions"] is None

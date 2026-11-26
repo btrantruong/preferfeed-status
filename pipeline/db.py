@@ -21,6 +21,7 @@ import sys
 import pandas as pd
 import yaml
 
+ATTEMPT_MARGIN_MS = 10_000   # replay: records begin this long before the init of their attempt
 REQUIRED_COLUMNS = ["id", "created_at", "done", "cancelled", "errors"]
 OPTIONAL_COLUMNS = ["condition", "started", "viewed_posts", "attempt"]
 COLUMNS = REQUIRED_COLUMNS + OPTIONAL_COLUMNS
@@ -54,7 +55,13 @@ SQL_SPOT = ("SELECT a.user_id, a.endpoint, a.timestamp_server, "
             "NULLIF(a.algo_state->>'signal_batch', '')::int AS signal_batch, "
             "a.algo_state->'inventory'->>'file_sha256' AS inventory_sha256 "
             "FROM algo_exchange a WHERE a.user_id = ANY(:uids) ORDER BY a.user_id, a.timestamp_server, a.id")
-ALL_SQL = [SQL_COLUMNS, SQL_ID_RANGE, SQL_ID_PROBE, SQL_EXCHANGES, SQL_RECORD_COUNTS, SQL_ACTIVE, SQL_SPOT]
+SQL_RECORD_ATTEMPTS = ("SELECT user_id, attempt, count(*) AS n_records, min(timestamp_server) AS first_record_ms, "
+                       "max(timestamp_server) AS last_record_ms FROM record_entry "
+                       "WHERE record_id > :after AND record_id <= :upto GROUP BY user_id, attempt")
+SQL_YOUGOV = "SELECT id AS user_id, yougov_id FROM visited_users WHERE yougov_id = ANY(:ids)"
+ALL_SQL = [SQL_COLUMNS, SQL_ID_RANGE, SQL_ID_PROBE, SQL_EXCHANGES, SQL_RECORD_COUNTS, SQL_ACTIVE, SQL_SPOT,
+           SQL_RECORD_ATTEMPTS, SQL_YOUGOV]
+RECORD_ATTEMPT_COLUMNS = ["user_id", "attempt", "n_records", "first_record_ms", "last_record_ms"]
 
 
 def assert_select(sql):
@@ -206,6 +213,23 @@ class LiveSource:
                     lo = mid + 1
             return lo
 
+    def record_id_max(self, cc):
+        """Largest record_id (None if the table is empty)."""
+        r = self.query(cc, SQL_ID_RANGE).iloc[0]
+        return None if pd.isna(r["hi"]) else int(r["hi"])
+
+    def record_attempts(self, cc, after_id, upto_id):
+        """record_entry rows with after_id < record_id <= upto_id, aggregated per (user_id, attempt):
+        RECORD_ATTEMPT_COLUMNS. The table needs its attempt column."""
+        if not self.has_column(cc, "record_entry", "attempt"):
+            raise RuntimeError("record_entry has no attempt column")
+        df = self.query(cc, SQL_RECORD_ATTEMPTS, {"after": int(after_id), "upto": int(upto_id)})
+        return df[RECORD_ATTEMPT_COLUMNS]
+
+    def yougov_ids(self, cc, ids):
+        """DataFrame user_id, yougov_id of the listed yougov ids (the ids report only)."""
+        return self.query(cc, SQL_YOUGOV, {"ids": list(ids)}) if ids else pd.DataFrame(columns=["user_id", "yougov_id"])
+
     def record_counts(self, cc, thresholds):
         """thresholds: DataFrame user_id, since_ms. Returns {user_id: record_entry rows with
         timestamp_server >= since_ms}. Scans record_entry from the record_id of the earliest threshold."""
@@ -248,6 +272,7 @@ class ExportSource:
 
     def __init__(self, folder):
         self.folder = folder
+        self._rec_cache = {}
 
     def _read(self, cc, table, columns=None):
         files = glob.glob(os.path.join(self.folder, cc, "*", f"{table}.parquet"))
@@ -286,6 +311,45 @@ class ExportSource:
         b = int(launch_ms) + ((rec["timestamp_server"] - launch_ms) // bin_ms) * bin_ms
         g = rec.groupby(b)["user_id"].nunique()
         return pd.DataFrame({"bin_ms": g.index.astype("int64"), "n_active": g.values.astype("int64")})
+
+    def _records(self, cc):
+        """record_entry of the export with record_id and attempt; attempt is assigned from the init exchanges when the
+        export has no such column (records begin up to ATTEMPT_MARGIN_MS before their init)."""
+        if cc in self._rec_cache:
+            return self._rec_cache[cc]
+        rec = self._read(cc, "record_entry")
+        if "record_id" not in rec:
+            rec = rec.assign(record_id=range(1, len(rec) + 1))
+        if "attempt" not in rec or rec["attempt"].isna().all():
+            ex = self._read(cc, "algo_exchange", ["user_id", "endpoint", "timestamp_server"])
+            inits = {u: sorted(g["timestamp_server"]) for u, g in ex[ex["endpoint"] == "init"].groupby("user_id")}
+            import numpy as np
+            att = np.ones(len(rec), dtype="int64")
+            for u, idx in rec.groupby("user_id").indices.items():
+                ts = rec["timestamp_server"].to_numpy()[idx]
+                att[idx] = np.maximum(1, np.searchsorted(np.array(inits.get(u, []), dtype="int64") - ATTEMPT_MARGIN_MS, ts, side="right"))
+            rec = rec.assign(attempt=att)
+        self._rec_cache[cc] = rec
+        return rec
+
+    def record_id_max(self, cc):
+        rec = self._records(cc)
+        return int(rec["record_id"].max()) if len(rec) else None
+
+    def record_id_at(self, cc, t_ms):
+        rec = self._records(cc)
+        hit = rec[rec["timestamp_server"] >= t_ms]
+        return int(hit["record_id"].min()) if len(hit) else None
+
+    def record_attempts(self, cc, after_id, upto_id):
+        rec = self._records(cc)
+        rec = rec[(rec["record_id"] > after_id) & (rec["record_id"] <= upto_id)]
+        g = rec.groupby(["user_id", "attempt"])["timestamp_server"].agg(n_records="size", first_record_ms="min", last_record_ms="max").reset_index()
+        return g[RECORD_ATTEMPT_COLUMNS]
+
+    def yougov_ids(self, cc, ids):
+        v = self._read(cc, "visited_users", ["id", "yougov_id"]).rename(columns={"id": "user_id"})
+        return v[v["yougov_id"].isin(set(ids))][["user_id", "yougov_id"]]
 
     def spot(self, cc, uids):
         ex = self._read(cc, "algo_exchange")

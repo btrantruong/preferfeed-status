@@ -1,6 +1,7 @@
 # pipeline
 
 Changelog
+- 2026-11-25: sessions.py (attempts, time on the feed, in session or left), the incremental per-attempt record aggregates, three published session files and the local ids report (report.py, IDS_FILE).
 - 2026-11-25: spot_users.json (panel D) is published when SPOT_PUBLISH is on.
 - 2026-11-25: added PULL_COUNTRIES (query only some countries, `--countries`) and LAUNCH_BY_COUNTRY (a later launch per country).
 - 2026-11-24: added the registry of published files (cubes.py), the detail pull (detail.py), integrity flags and attempts (checks.py), the spot check (spot.py), the replay source and the new config keys.
@@ -19,6 +20,8 @@ Pulls `visited_users` from each country database, gives each participant one sta
 | `checks.py` | attempts, retakes and integrity flags (pure functions) |
 | `cubes.py` | one builder per published file and the registry of files, columns and window kinds |
 | `detail.py` | the detail pull per country, with the cache of final counts (`detail_cache.json` in `OUTDIR`) |
+| `sessions.py` | attempts, time on the feed and the in session / left state per participant (pure functions) |
+| `report.py` | the local ids report (markdown text from tables) |
 | `spot.py` | participant list, default picks, batches and post vectors of the spot check (panel D) |
 | `classify.py` | status and reason per participant (pure functions) |
 | `aggregate.py` | runs the registry, carry-over for failed servers and failed detail pulls, `meta.json`, history |
@@ -53,6 +56,14 @@ Each run starts with `git pull --ff-only`, so a machine always continues from th
 ## Pulling some countries, launching countries at different times
 
 `COUNTRIES` lists the study countries (page toggle, credential keys). `PULL_COUNTRIES` (empty = all) or `./run.sh --countries UK,DE` limits a run to some of them: only those servers are contacted (no credentials are read for the others), and a country that is not pulled keeps its last published rows with their own time, like a failed server, but with status `not_pulled` in `meta.json` (a country never pulled has no data and is greyed in the toggle). `LAUNCH_BY_COUNTRY=DE:2026-11-27T10:00` sets a later launch for one country: its participants are counted from that time, `LAUNCH` stays the earliest launch and the origin of the time axis (every country's bins are on that grid), and `meta.countries[cc].launch_utc` records each launch. A changed launch of one country drops only that country's carried rows. `LAUNCH_BY_COUNTRY` must not be earlier than `LAUNCH`.
+
+## Sessions: in session or left, time on the feed, attempts
+
+With `DETAIL` basic or full every run also builds three published files (counts and sums only, no id): `session_state.csv` (state by condition and creation bin: done, stopped, in_session, left), `time_on_feed_hist.csv` (time on the feed, final attempt and total, histogram with the exact sum of minutes) and `attempts_hist.csv` (attempt durations by attempt number and how the attempt ended), shown as pages 3 to 5 of panel B. An attempt runs from its init exchange to its last `record_entry` row of that attempt; the time on the feed of a participant is the sum over attempts. In session or left follows `SESSION_RULE`: with `time` a participant who is not done or cancelled is in session while the time since entry (creation, or the last init after a restart) is below T_ref, the `SESSION_REF_QUANTILE` value of entry to last record of done participants (the fixed `SESSION_REF_FALLBACK_MIN` until `SESSION_REF_MIN_N` participants are done; `meta.json` has the value and its source under `sessions`); with `silence` a last record at most `SESSION_SILENCE_S` old means in session. The other rule is still computed and `n_disagree` counts the participants on whom they differ. Histogram bins are `DURATION_EDGES_S`.
+
+The per-attempt record aggregates (rows, first and last time per participant and attempt) are read incrementally: `detail_cache.json` keeps them with the highest `record_id` already read, and a run reads only the ids above it, in chunks of `RECORD_CHUNK_IDS`, saving after each chunk, so a stopped first run resumes. `record_id` rises with time, so the aggregates stay exact, also for a restart after a long gap. `record_entry` and `algo_exchange` need their `attempt` column (a replay of an export without it assigns attempts from the init times).
+
+Local files in `OUTDIR` (never published): `participants_sessions.csv` (one row per participant: entry, time on the feed, both rules, state), `attempts_local.csv` (one row per attempt) and, if `IDS_FILE` is set in `config.local.env`, `ids_report.md`. The report takes the yougov ids of that file (one per line; `yougov_id` is read only for them) and lists, for each `SHORT_STAY_S` threshold (default 10 s and 60 s), the ids whose total time on the feed was shorter, how many of them restarted, the reasons (error codes logged during the attempt that ended in a restart, or none), whether a stop preceded the restart, and the median and maximum duration of the attempts that ended in a restart with the id of the longest.
 
 ## Switching machines
 
