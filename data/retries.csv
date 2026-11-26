@@ -8,11 +8,11 @@ bin_start,country,trigger,retries,retry_outcome,n
 2026-11-25T10:00:00Z,UK,reload,1,done,1
 2026-11-25T10:15:00Z,UK,none,3,left_no_final_error,1
 2026-11-25T10:45:00Z,UK,none,2,left_no_final_error,1
-2026-11-25T12:45:00Z,UK,none,1,left_no_final_error,1
+2026-11-25T12:45:00Z,UK,none,2,left_no_final_error,1
 2026-11-25T21:00:00Z,UK,none,3,done,1
 2026-11-26T10:15:00Z,DE,reload,1,left_no_final_error,1
 2026-11-26T10:30:00Z,UK,reload,1,left_no_final_error,1
 2026-11-26T10:45:00Z,DE,none,2,left_no_final_error,1
-2026-11-26T11:00:00Z,FR,none,1,left_no_final_error,1
+2026-11-26T11:00:00Z,FR,none,1,done,1
 2026-11-26T11:15:00Z,UK,none,1,left_final_error,1
 2026-11-26T11:15:00Z,UK,none,1,left_no_final_error,1
