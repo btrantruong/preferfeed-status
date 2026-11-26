@@ -1,20 +1,17 @@
-"""User spot check (panel E, local preview only): participant list, default picks, batches and post vectors.
+"""User spot check (public panel E): the participant list, the default picks and the published file.
 
-Pure functions. The output (spot_users.json) holds one participant's data (u_long profile and the posts that
-participant saw), so it is written to OUTDIR, never copied by publish.py and served by preview.py under
-local/ only.
-
-Batch numbers follow algo_exchange.served_batch (1-based): the init exchange serves 2 * BATCH_SIZE posts, which
-are batches 1 and 2 (first and last BATCH_SIZE ids); a next_batch exchange serves one batch, numbered
-algo_state.n_batches_served. u_long of an exchange is the profile after the signals of the previous batch,
-and it is the profile that chose the batch of the same response when draw is "recommend".
+Pure functions. The batches, rewards and profiles of a participant come from trajectory.py. The file is public
+when SPOT_PUBLISH is on; participants whose condition is not in SPOT_PROFILE_CONDITIONS are listed without profile
+and reward fields.
 """
 import hashlib
 
 import numpy as np
 import pandas as pd
 
-PROFILE_DIMS = ["us_v_them", "fear", "outrage", "pride", "hope"]  # SCORE_COLS of preferfeed_algo, in this order
+import trajectory as T
+
+PROFILE_DIMS = T.DIMS
 CONDITIONS = ["ATTENTION", "PREFERENCE", "RANDOM"]
 
 
@@ -68,88 +65,27 @@ def select_users(P, ex, p, country):
 
 def exchanges_of_final_attempt(rows):
     """Rows of one participant from the last init on, in time order."""
-    rows = rows.reset_index(drop=True)
-    inits = rows.index[rows["endpoint"] == "init"]
-    return rows.loc[inits[-1]:] if len(inits) else rows
+    return T.split_attempts(rows)[-1]
 
 
-def nn(x):
-    """None for a missing value (None or NaN), the value otherwise: JSON has no NaN."""
-    return None if x is None or (isinstance(x, float) and np.isnan(x)) else x
+def user_record(rows, inventory, p, posts):
+    """The final attempt of one participant (trajectory.build_attempt); posts (dict) collects the posts served."""
+    return T.build_attempt(exchanges_of_final_attempt(rows), inventory, p, posts)
 
 
-def cut_text(text, max_chars):
-    t = "" if text is None else str(text)
-    return (t[:max_chars], True) if len(t) > max_chars else (t, False)
-
-
-def dwell_by_batch(rows):
-    """{batch: {post_id: dwell in ms}} from the signals: the exchange whose signal_batch is b carries the dwell of the
-    posts of batch b (signal_post_ids and dwell_times have the same order). Exchanges without signal_batch,
-    with lists of different length or with a missing dwell give nothing."""
-    out = {}
-    for r in rows.itertuples():
-        b, ids, dw = getattr(r, "signal_batch", None), getattr(r, "signal_post_ids", None), getattr(r, "dwell_times", None)
-        if b is None or pd.isna(b) or not isinstance(ids, (list, tuple, np.ndarray)) or not isinstance(dw, (list, tuple, np.ndarray)):
-            continue
-        if len(ids) != len(dw):
-            continue
-        out[int(b)] = {i: float(d) for i, d in zip(ids, dw) if d is not None and not pd.isna(d)}
-    return out
-
-
-def user_record(rows, inv, batch_size, max_chars, posts):
-    """One participant's exchanges and batches; posts (dict) collects the posts that were served."""
-    rows = exchanges_of_final_attempt(rows)
-    t0 = rows["timestamp_server"].min()
-    dwell = dwell_by_batch(rows)
-    exchanges, last_batch, unmatched = [], 0, 0
-    for r in rows.itertuples():
-        ids = list(r.served_post_ids) if isinstance(r.served_post_ids, (list, tuple, np.ndarray)) else []
-        chunks = [ids[k:k + batch_size] for k in range(0, len(ids), batch_size)]
-        nb = r.n_batches_served
-        first = int(nb) - len(chunks) + 1 if nb is not None and not pd.isna(nb) else last_batch + 1
-        last_batch = first + len(chunks) - 1
-        u = [None if v is None or (isinstance(v, float) and np.isnan(v)) else float(v)
-             for v in (r.u_long if isinstance(r.u_long, (list, tuple, np.ndarray)) else [])]
-        batches = []
-        for k, chunk in enumerate(chunks):
-            found = [i for i in chunk if i in inv.index]
-            for i in found:
-                if i not in posts:
-                    row = inv.loc[i]
-                    text, cut = cut_text(row["text"], max_chars)
-                    posts[i] = {"country": row["country"], "platform": row["platform"],
-                                "scores": [int(row[d]) for d in PROFILE_DIMS],
-                                "sum": float(sum(int(row[d]) for d in PROFILE_DIMS)), "text": text, "cut": cut}
-            sums = [posts[i]["sum"] for i in found]
-            dw = dwell.get(first + k, {})
-            unmatched += len([i for i in dw if i not in chunk])
-            batches.append({"batch": first + k, "post_ids": found, "n_served": len(chunk),
-                            "mean_sum": float(np.mean(sums)) if sums else None,
-                            "dwell_ms": [dw.get(i) for i in found]})
-        exchanges.append({"request_index": None if r.request_index is None or pd.isna(r.request_index)
-                          else int(r.request_index), "endpoint": r.endpoint, "phase": nn(r.phase), "draw": nn(r.draw),
-                          "t_min": float((r.timestamp_server - t0) / 60_000), "u_long": u or None,
-                          "u_long_sum": float(np.nansum([np.nan if v is None else v for v in u])) if u else None,
-                          "u_long_norm": float(np.sqrt(np.nansum([np.nan if v is None else v * v for v in u]))) if u else None,
-                          "batches": batches})
-    return {"exchanges": exchanges, "t0_ms": int(t0), "dwell_unmatched": int(unmatched)}
-
-
-def build_spot(picks, spot_rows, inv_by_country, p, local_sha, inventory_note=None):
+def build_spot(picks, spot_rows, inventories, p, local_sha, inventory_note=None):
     """Assemble spot_users.json.
 
     picks: {country: (ids, defaults)} from select_users plus the participant info
            {country: DataFrame user_id, condition, created_at, n_next_batch}.
-    spot_rows: {country: DataFrame (db.SPOT_COLUMNS)}. inv_by_country: {country: inventory indexed by post_id}.
-    local_sha: sha256 of the local inventory file. Returns a dict that json.dump can write."""
+    spot_rows: {country: DataFrame (db.SPOT_COLUMNS)}. inventories: trajectory.prepare_inventory.
+    local_sha: sha256 of the local inventory file. Participants whose condition is not in SPOT_PROFILE_CONDITIONS
+    are listed without profile and reward fields. Returns a dict that json.dump can write."""
     users, posts, inventory = [], {}, {}
     for cc, (ids, defaults, info) in picks.items():
         rows = spot_rows.get(cc)
-        if rows is None or rows.empty:
+        if rows is None or rows.empty or cc not in inventories:
             continue
-        inv = inv_by_country.get(cc)
         server = rows["inventory_sha256"].dropna()
         inventory[cc] = {"server_sha256": server.iloc[0] if len(server) else None, "local_sha256": local_sha}
         inventory[cc]["match"] = inventory[cc]["server_sha256"] == local_sha
@@ -158,11 +94,8 @@ def build_spot(picks, spot_rows, inv_by_country, p, local_sha, inventory_note=No
             g = rows[rows["user_id"] == uid]
             if g.empty:
                 continue
-            rec = user_record(g, inv if inv is not None else pd.DataFrame(index=[]), p["batch_size"],
-                              p["spot_text_max_chars"], posts) if inv is not None else None
-            if rec is None:
-                continue
             meta = info[info["user_id"] == uid].iloc[0]
+            rec = T.hide_profile(user_record(g, inventories[cc], p, posts), meta["condition"], p["spot_profile_conditions"])
             users.append({"country": cc, "user_id": int(uid), "condition": meta["condition"],
                           "created_at": int(meta["created_at"]), "default_for": default_of.get(uid),
                           "n_next_batch": int(meta["n_next_batch"]), **rec})

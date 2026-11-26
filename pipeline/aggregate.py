@@ -28,6 +28,7 @@ import detail as D
 import report as R
 import sessions as SS
 import spot as S
+import trajectory as TR
 
 SPOT_FILE = "spot_users.json"
 PREV_COUNTRY_FILE = "status_bins.csv"  # the only published file of the first page version
@@ -309,10 +310,8 @@ def write_spot(cfg, source, P, ex_all, detail_status, outdir):
         if not picks:
             write_atomic(path, json.dumps({"users": [], "posts": {}, "inventory": {}, "dims": S.PROFILE_DIMS}))
             return "no participants", 0
-        inv_all = pd.read_parquet(cfg.inventory_file, columns=["post_id", "country", "platform", "text"]
-                                  + S.PROFILE_DIMS).drop_duplicates("post_id").set_index("post_id")
-        inv = {cc: inv_all[inv_all["country"] == cc] for cc in picks}
-        data = S.build_spot(picks, rows, inv, cfg.params, S.file_sha256(cfg.inventory_file))
+        inventories = TR.prepare_inventory(pd.read_parquet(cfg.inventory_file, columns=TR.INVENTORY_COLUMNS))
+        data = S.build_spot(picks, rows, inventories, cfg.params, S.file_sha256(cfg.inventory_file))
         write_atomic(path, json.dumps(data, allow_nan=False))
         note = f"{len(data['users'])} participants"
         return note + (f" (dwell not matched to a batch: {data['dwell_unmatched']})" if data["dwell_unmatched"] else ""), len(data["users"])

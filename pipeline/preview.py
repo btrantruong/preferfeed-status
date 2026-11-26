@@ -16,6 +16,7 @@ sys.path.insert(0, HERE)
 import config as cfgmod  # noqa: E402
 import cubes  # noqa: E402
 
+JS_FOLDERS = {"charts", "trajectory"}   # module folders under js/
 PUBLIC = {"index.html", ""}  # site files served from the clone; js/ and css/ are served by extension
 DATA_NAMES = set(cubes.FILE_NAMES) | {"meta.json", "spot_users.json"}  # the only files served under data/
 
@@ -33,7 +34,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             # names of the registry only: never participants.csv, history/ or the cache
             return os.path.join(self.data_dir, name) if name in DATA_NAMES else missing
         parts = rel.split("/")
-        if (len(parts) == 2 and parts[0] in ("js", "css") or len(parts) == 3 and parts[:2] == ["js", "charts"]) \
+        if (len(parts) == 2 and parts[0] in ("js", "css") or len(parts) == 3 and parts[0] == "js" and parts[1] in JS_FOLDERS) \
                 and ".." not in parts and parts[-1].endswith((".js", ".css")):
             return os.path.join(self.site_dir, rel)
         if rel not in PUBLIC:

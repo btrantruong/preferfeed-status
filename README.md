@@ -1,6 +1,7 @@
 # preferFeed fielding status
 
 Changelog
+- 2026-11-26: panel E is one page of stacked trajectory panels (batch sums, batch means per dimension, rewards, u_short, u_long) with an alignment toggle; rewards and profile are published only for the conditions in `SPOT_PROFILE_CONDITIONS` (attention and random).
 - 2026-11-26: panel A: outcome tree without the cancelled status (done by first try or retry, in session, left by errors and retries) and a new retries figure; `outcome_bins.csv` and `retries.csv` replace `attempts.csv`.
 - 2026-11-26: panels regrouped (B drop out stats, C request pulse and errors, D data completeness, E user spot check); requests per participant shows one condition at a time.
 - 2026-11-25: panel B pages 3 to 5: in session or left, time on the feed, attempt durations (sessions files, detail pull); a local ids report.
@@ -14,7 +15,7 @@ Changelog
 
 Page: https://btrantruong.github.io/preferfeed-status/
 
-The page shows, per country server or for all countries, how many participants started the study since the launch and the status of each at the last data pull. Aggregate counts are published, with one exception: panel E shows, for a list of participants identified by their database id, the posts they were served, the time spent on each post and the algorithm's profile (no survey id, answers or other personal data); `SPOT_PUBLISH=off` in `pipeline/config.env` stops that and removes the published copy.
+The page shows, per country server or for all countries, how many participants started the study since the launch and the status of each at the last data pull. Aggregate counts are published, with one exception: panel E shows, for a list of participants identified by their database id, the posts they were served and the time spent on each post, and for the conditions in `SPOT_PROFILE_CONDITIONS` (attention and random) also the rewards and the profile of the algorithm (no survey id or survey answers). The rewards of the preference condition are the participant's votes, so rewards, u_short and u_long are left out for it; its served posts were still chosen by its profile. Files published before 2026-11-26 held u_long for every condition and stay in the git history. `SPOT_PUBLISH=off` in `pipeline/config.env` stops the publication and removes the published copy.
 
 ## Status definitions
 
@@ -44,7 +45,7 @@ The top panel (participants since launch) and its window slider with two draggab
 - B. Drop out stats: in session or left by condition (ss1), time on the feed of done and not-done participants (ss2), duration of each attempt by attempt number and outcome (ss3).
 - C. Request pulse & errors: server errors over time (se1), errors by type and sequence (se2), where in the session the error happens (se3), status mix with and without server errors (se4), client-side network failures (se5); algorithm calls and active participants over time (ap1), warm-up exit (ap2).
 - D. Data completeness: requests per participant, one condition at a time with a button per condition (dc3), records per done participant (dc2), integrity-flag rate over time (dc1, with an i beside each flag for its definition).
-- E. User spot check (sp2, sp1): one participant's batch sums and posts (point area = dwell time) over their u_long sum and norm, and u_long over time. One button per condition selects the next participant of that condition (a click cycles through them) and a dropdown, grouped by condition, selects a specific participant. The panel appears when `data/spot_users.json` exists; a run writes it only when `DETAIL` is basic or full and `INVENTORY_FILE` is set on that machine, and a published copy stays when a later run (for example on a machine without the inventory) does not write one.
+- E. User spot check (sp): one participant's final attempt as stacked panels on one batch axis: posts and batch means of the score sum (point area = dwell time), batch mean per dimension (score minus inventory mean), reward per post, u_short, u_long, and u_long sum and norm. The toggle places a request's reward and profile at the batch whose signals it carried (informed by this batch) or at the batch it chose two batches later (informs this batch). Each participant shows how many rebuilt u_short and u_long values equal the logged ones. One button per condition selects the next participant of that condition and a dropdown selects a specific one. The panel appears when `data/spot_users.json` exists; a run writes it only when `DETAIL` is basic or full and `INVENTORY_FILE` is set on that machine, and a published copy stays when a later run does not write one.
 
 Every page has a caption with the quantities on the axes and how they were computed. Participant charts include the participants created inside the window; event charts include the events whose time lies inside it.
 
@@ -73,4 +74,4 @@ Definitions that go beyond the status page: in `retries.csv` an attempt runs fro
 
 ## Code
 
-`pipeline/` pulls, classifies, bins and publishes; see `pipeline/README.md`. The page (`index.html`, `js/`) is plain HTML and ES modules without external libraries or a build step (`main.js` boots, `select.js` filters, `charts/` holds one module per figure); `node --test js/tests/*.test.js` runs its tests. Open it with `?data=<url>/` to read the data files from another location.
+`pipeline/` pulls, classifies, bins and publishes; see `pipeline/README.md`. The page (`index.html`, `js/`) is plain HTML and ES modules without external libraries or a build step (`main.js` boots, `select.js` filters, `charts/` holds one module per figure, `trajectory/` the panels shared by panel E and the local view); `node --test js/tests/*.test.js` runs its tests. Open it with `?data=<url>/` to read the data files from another location.

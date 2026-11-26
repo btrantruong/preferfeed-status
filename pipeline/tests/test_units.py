@@ -15,6 +15,7 @@ import db  # noqa: E402
 import detail  # noqa: E402
 import outcomes  # noqa: E402
 import spot  # noqa: E402
+import trajectory  # noqa: E402
 from tests.test_aggregate import make_cfg  # noqa: E402
 
 
@@ -63,17 +64,26 @@ def test_retook_after_stop_orders_stop_and_restart():
     assert checks.retook_after_stop(P.iloc[:1], pd.Series([1]), events, ["IDLE_DETECTED"], {}).tolist() == [False]
 
 
+def inventory(frame):
+    """A frame indexed by post_id as the (posts, mean) pair of one country."""
+    return trajectory.prepare_inventory(frame.rename_axis("post_id").reset_index())["UK"]
+
+
+def params(max_chars):
+    return {**cfgmod.default_params(), "batch_size": 5, "spot_text_max_chars": max_chars}
+
+
 def test_spot_default_pick_batches_and_nan():
     c = pd.DataFrame({"user_id": [1, 2, 3, 4], "condition": ["ATTENTION"] * 3 + ["RANDOM"], "created_at": [4, 3, 2, 1], "n_next_batch": [10, 12, 30, 11]})
     assert spot.pick_defaults(c, 10) == {"ATTENTION": 2, "RANDOM": 4}   # median 12, closest is user 2
     assert spot.pick_defaults(c, 10, "UK:3")["PREFERENCE"] == 3
-    inv = pd.DataFrame({"country": "UK", "platform": "X", "text": ["t" * 10] * 3, **{d: [1, 2, 0] for d in spot.PROFILE_DIMS}}, index=["a", "b", "c"])
+    inv = pd.DataFrame({"country": "UK", "platform": "X", "text": ["t" * 10] * 3, "n_words": 3, **{d: [1, 2, 0] for d in spot.PROFILE_DIMS}}, index=["a", "b", "c"])
     rows = pd.DataFrame({"user_id": [1, 1], "endpoint": ["init", "next_batch"], "timestamp_server": [0, 60_000], "request_index": [0, 1],
                          "phase": [float("nan"), "warmup"], "draw": ["initial_feed", "recommend"], "n_batches_served": [2, 3],
                          "u_long": [[0, 0, 0, 0, 0], [0.5, None, 0, 0, 0]], "served_post_ids": [list("abcabcabca"), ["a", "z", "c"]],
                          "inventory_sha256": ["s", "s"]})
     posts = {}
-    rec = spot.user_record(rows, inv, 5, 5, posts)
+    rec = spot.user_record(rows, inventory(inv), params(5), posts)
     assert [b["batch"] for e in rec["exchanges"] for b in e["batches"]] == [1, 2, 3]
     assert rec["exchanges"][0]["phase"] is None and rec["exchanges"][1]["u_long_sum"] == 0.5
     assert rec["exchanges"][1]["batches"][0]["post_ids"] == ["a", "c"] and rec["exchanges"][1]["batches"][0]["n_served"] == 3  # z is not in the inventory
@@ -83,7 +93,7 @@ def test_spot_default_pick_batches_and_nan():
 
 
 def test_spot_dwell_goes_to_the_signalled_batch_and_u_long_norm():
-    inv = pd.DataFrame({"country": "UK", "platform": "X", "text": ["t"] * 12, **{d: [1] * 12 for d in spot.PROFILE_DIMS}},
+    inv = pd.DataFrame({"country": "UK", "platform": "X", "text": ["t"] * 12, "n_words": 3, **{d: [1] * 12 for d in spot.PROFILE_DIMS}},
                        index=list("abcdefghijkl"))
     ids0, ids1 = list("abcdefghij"), list("klmno")[:2] + ["a", "b", "c"]          # init serves batches 1 and 2; request 1 serves batch 3
     rows = pd.DataFrame({
@@ -94,7 +104,7 @@ def test_spot_dwell_goes_to_the_signalled_batch_and_u_long_norm():
         "signal_post_ids": [[], list("abcde"), list("fghij")],                       # request 1 reports batch 1, request 2 batch 2
         "dwell_times": [[], [1000, 2000, 3000, 4000, None], [10, 20, 30, 40, 50]],
         "signal_batch": [None, 1, 2], "inventory_sha256": ["s"] * 3})
-    rec = spot.user_record(rows, inv, 5, 50, {})
+    rec = spot.user_record(rows, inventory(inv), params(50), {})
     by = {b["batch"]: b for e in rec["exchanges"] for b in e["batches"]}
     assert by[1]["dwell_ms"] == [1000.0, 2000.0, 3000.0, 4000.0, None]            # a missing dwell stays null
     assert by[2]["dwell_ms"] == [10.0, 20.0, 30.0, 40.0, 50.0]
@@ -104,7 +114,7 @@ def test_spot_dwell_goes_to_the_signalled_batch_and_u_long_norm():
     assert last["u_long_sum"] == 7.0 and abs(last["u_long_norm"] - 5.0) < 1e-12
     bad = rows.assign(signal_batch=[None, 3, 2], signal_post_ids=[[], list("fghij"), list("fghij")],
                       dwell_times=[[], [1, 2, 3, 4, 5], [10, 20, 30, 40, 50]])   # request 1 claims batch 3 with ids not in it
-    rec = spot.user_record(bad, inv, 5, 50, {})
+    rec = spot.user_record(bad, inventory(inv), params(50), {})
     assert rec["dwell_unmatched"] == 5 and all(d is None for d in {b["batch"]: b for e in rec["exchanges"] for b in e["batches"]}[3]["dwell_ms"])
     import json
     json.dumps(rec, allow_nan=False)

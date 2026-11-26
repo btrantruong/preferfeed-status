@@ -1,6 +1,7 @@
 # pipeline
 
 Changelog
+- 2026-11-26: trajectory.py (batches, rebuilt rewards, checks), local_view.py (local page with every participant and field), more fields in the spot query, SPOT_PROFILE_CONDITIONS and the algorithm parameters.
 - 2026-11-26: outcomes.py and the files outcome_bins.csv and retries.csv for panel A; attempts.csv is no longer built.
 - 2026-11-26: the spot check panel of the page is now E (page panels regrouped); text only.
 - 2026-11-25: sessions.py (attempts, time on the feed, in session or left), the incremental per-attempt record aggregates, three published session files and the local ids report (report.py, IDS_FILE).
@@ -25,7 +26,9 @@ Pulls `visited_users` from each country database, gives each participant one sta
 | `detail.py` | the detail pull per country, with the cache of final counts (`detail_cache.json` in `OUTDIR`) |
 | `sessions.py` | attempts, time on the feed and the in session / left state per participant (pure functions) |
 | `report.py` | the local ids report (markdown text from tables) |
-| `spot.py` | participant list, default picks, batches and post vectors of the spot check (panel E) |
+| `spot.py` | participant list, default picks and the published file of the spot check (panel E) |
+| `trajectory.py` | one attempt as batches, rebuilt rewards, u_short, u_long and the checks against the log (pure functions; definitions in its docstring) |
+| `local_view.py` | builds one local HTML page with every participant, attempt and field, from the databases or from a folder of tables |
 | `classify.py` | status and reason per participant (pure functions) |
 | `aggregate.py` | runs the registry, carry-over for failed servers and failed detail pulls, `meta.json`, history |
 | `publish.py` | copies the produced registry files and `meta.json` into `../data/`, commits only them, pushes |
@@ -80,7 +83,18 @@ Run on one machine at a time. To switch, run `./run.sh` on the other machine: it
 
 `DETAIL` in `config.env` is `off` (default: core files only), `basic` (record counts of done participants, algorithm exchanges, spot check) or `full` (adds the active participants per bin). Every detail statement is a read-only SELECT with a statement timeout (`DETAIL_TIMEOUT_S`); a country whose detail pull fails or times out keeps its last published detail rows, marked with their time in `meta.json`, and the core files are still published. `record_entry` has only its primary key as an index, so its queries are bounded by `record_id` (lower bound found by bisection on `timestamp_server`), counts of done participants are cached once final, and active participants are cached per finished bin. All other keys (bin widths, thresholds, histogram ranges, flow steps, spot check) are listed with comments in `config.env`; `config.py` checks that `EVENT_BIN_MINUTES` divides `BIN_MINUTES`, that `FLAG_BIN_MINUTES` is a multiple of it, and the other ranges.
 
-The spot check needs `INVENTORY_FILE` in `config.local.env` (the runtime inventory parquet) and writes `OUTDIR/spot_users.json`, which holds, for up to `SPOT_MAX_USERS` participants per country (identified by database id), the profile and the posts they saw with their dwell times. With `SPOT_PUBLISH=on` (the default in `config.env`) `publish.py` copies it into `data/` when the run produced a list of at least one participant, and `meta.json` records `spot.as_of` and `spot.n_users`; a run that writes none (detail off, no `INVENTORY_FILE`, no participants) leaves a published copy as it is. With `SPOT_PUBLISH=off` it is never copied and a published copy is deleted at the next publish. The file is about 1.3 MB for 30 participants because it holds the post texts; `SPOT_TEXT_MAX_CHARS` cuts long texts.
+The spot check needs `INVENTORY_FILE` in `config.local.env` (the runtime inventory parquet, with `n_words`) and writes `OUTDIR/spot_users.json`, which holds, for up to `SPOT_MAX_USERS` participants per country (identified by database id), the posts they saw with their dwell times and batch means, and for the conditions in `SPOT_PROFILE_CONDITIONS` the rewards, u_short and u_long. A participant whose condition, or the algorithm type of any request, is outside that list gets none of those fields. With `SPOT_PUBLISH=on` (the default in `config.env`) `publish.py` copies the file into `data/` when the run produced a list of at least one participant, and `meta.json` records `spot.as_of` and `spot.n_users`; a run that writes none (detail off, no `INVENTORY_FILE`, no participants) leaves a published copy as it is. With `SPOT_PUBLISH=off` it is never copied and a published copy is deleted at the next publish. The file is about 2 MB for 38 participants; `SPOT_TEXT_MAX_CHARS` cuts long texts and `MAX_FILE_KB` warns.
+
+## Trajectories and the local view
+
+`trajectory.py` rebuilds the rewards, which are not logged, with `REWARD_ETA`, `REWARD_SIGMA_FLOOR` and `MIN_DWELL_MS`, and checks every attempt against the log: the rebuilt u_short must equal the logged one, and u_long must follow the update rule with `ALGO_ALPHA` (0.9, preferfeed-algo v0.1.4; the SL1 data used 0.7). A mismatch means the parameters, the alpha or the inventory file differ from the server's, or a request is missing from the log.
+
+```sh
+uv run --locked python local_view.py --live          # every participant since the launch; writes OUTDIR/trajectories.html
+uv run --locked python local_view.py --tables FOLDER --countries UK --alpha 0.7 --out FILE
+```
+
+The page opens without a server and holds every field of every condition, including the votes of the preference condition: it is for local investigation only, and the builder refuses an output path inside this repository. `--live` sends read-only queries; run it again to refresh.
 
 ## Replay
 

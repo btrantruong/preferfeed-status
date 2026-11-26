@@ -1,4 +1,4 @@
-/* The post card of sp2: opens on hover or focus of a batch dot, stays on click, closes with Escape or a click
+/* The post card of the trajectory panels: opens on hover or focus of a batch dot, stays on click, closes with Escape or a click
    elsewhere. Post text is untrusted: it is inserted with textContent, never as HTML. */
 import { h } from "./util.js";
 

@@ -44,7 +44,14 @@ PARAM_SPEC = {
     "SPOT_USER": ("str", ""),               # COUNTRY:ID, overrides the default pick of the PREFERENCE condition
     "SPOT_TEXT_MAX_CHARS": ("int", 2000),   # sp2: longer post texts are cut and marked
     "SPOT_PUBLISH": ("str", "on"),          # on: spot_users.json (panel E) is published with the data; off: it is not, and a published copy is removed
-    "SPOT_DWELL_CAP_S": ("int", 30),        # sp2: dwell time (seconds) at which the point size stops growing
+    "SPOT_DWELL_CAP_S": ("int", 30),        # trajectory: dwell time (seconds) at which the point size stops growing
+    "SPOT_PROFILE_CONDITIONS": ("list", "ATTENTION,RANDOM"),   # panel E: conditions whose rewards and profile are published
+    "ALGO_ALPHA": ("float", 0.9),           # alpha of the deployed preferfeed_algo (used by the trajectory checks)
+    "ALGO_EPSILON": ("float", 1e-8),        # denominator floor of u_short
+    "REWARD_ETA": ("float", 0.25),          # attention reward: half width of the neutral band of z
+    "REWARD_SIGMA_FLOOR": ("float", 0.1),   # attention reward: floor on the warm-up scale, log units
+    "MIN_DWELL_MS": ("float", 100.0),       # a shorter dwell is a missing signal
+    "CHECK_TOL": ("float", 1e-6),           # trajectory checks: largest accepted difference from the logged profile
     "DURATION_EDGES_S": ("intlist", "10,60,120,180,240,300,360,420,480,540,600,660,720,780,840,900"),   # time on the feed and attempt histograms: bin edges in seconds (bin 0 is below the first edge, the last bin is open)
     "SESSION_SILENCE_S": ("int", 90),       # silence rule: a last record at most this old means in session
     "SESSION_REF_QUANTILE": ("float", 0.95),  # T_ref: this quantile of entry to last record of done participants
@@ -62,7 +69,8 @@ PAGE_PARAMS = ["EVENT_BIN_MINUTES", "FLAG_BIN_MINUTES", "MIN_N_RATE", "RECORDS_B
                "REQUESTS_MAX", "BATCH_SIZE", "DIFF_RANGE", "ATTEMPTS_MAX", "ERROR_AGE_BIN_MIN",
                "ERROR_AGE_MAX_MIN", "SERVER_ERROR_CODE", "CLIENT_ERROR_CODES", "FLOW_STEPS",
                "WARMUP_MAX_INDEX", "SPOT_MAX_USERS", "SPOT_DWELL_CAP_S", "DURATION_EDGES_S", "SESSION_SILENCE_S", "SESSION_RULE", "SESSION_REF_QUANTILE",
-               "SESSION_REF_FALLBACK_MIN", "OUTCOME_IGNORE_CODES"]
+               "SESSION_REF_FALLBACK_MIN", "OUTCOME_IGNORE_CODES",
+               "SPOT_PROFILE_CONDITIONS", "ALGO_ALPHA", "REWARD_ETA"]
 DETAIL_MODES = ["off", "basic", "full"]
 
 
@@ -283,6 +291,11 @@ def validate_params(cfg):
     for key in ("session_silence_s", "session_ref_min_n", "record_chunk_ids"):
         if p[key] <= 0:
             raise ValueError(f"{key.upper()} must be > 0")
+    if not 0 < p["algo_alpha"] <= 1 or p["reward_sigma_floor"] <= 0 or p["check_tol"] <= 0:
+        raise ValueError("ALGO_ALPHA must be in (0, 1], REWARD_SIGMA_FLOOR and CHECK_TOL > 0")
+    bad = [c for c in p["spot_profile_conditions"] if c not in ("ATTENTION", "PREFERENCE", "RANDOM")]
+    if bad:
+        raise ValueError(f"SPOT_PROFILE_CONDITIONS has unknown conditions {bad}")
     if p["spot_publish"] not in ("on", "off"):
         raise ValueError("SPOT_PUBLISH must be on or off")
     if p["spot_user"] and (":" not in p["spot_user"] or not p["spot_user"].split(":", 1)[1].isdigit()):

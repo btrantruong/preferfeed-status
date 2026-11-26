@@ -27,8 +27,8 @@ OPTIONAL_COLUMNS = ["condition", "started", "viewed_posts", "attempt"]
 COLUMNS = REQUIRED_COLUMNS + OPTIONAL_COLUMNS
 EXCHANGE_COLUMNS = ["user_id", "endpoint", "algo_type", "timestamp_server", "request_index", "phase"]
 SPOT_COLUMNS = ["user_id", "endpoint", "timestamp_server", "request_index", "phase", "draw",
-                "n_batches_served", "u_long", "served_post_ids", "signal_post_ids", "dwell_times", "signal_batch",
-                "inventory_sha256"]
+                "n_batches_served", "u_long", "u_short", "algo_type", "preferences", "warmup_log_mu", "warmup_log_sigma",
+                "served_post_ids", "signal_post_ids", "dwell_times", "signal_batch", "inventory_sha256"]
 
 # ---- SQL (all SELECT) ------------------------------------------------------------------------------
 SQL_COLUMNS = ("SELECT column_name FROM information_schema.columns WHERE table_name = :t")
@@ -50,7 +50,10 @@ SQL_SPOT = ("SELECT a.user_id, a.endpoint, a.timestamp_server, "
             "NULLIF(a.algo_state->>'request_index', '')::int AS request_index, "
             "a.algo_state->>'phase' AS phase, a.algo_state->>'draw' AS draw, "
             "NULLIF(a.algo_state->>'n_batches_served', '')::int AS n_batches_served, "
-            "a.algo_state->'u_long' AS u_long, a.served_post_ids AS served_post_ids, "
+            "a.algo_state->'u_long' AS u_long, a.algo_state->'u_short' AS u_short, a.served_post_ids AS served_post_ids, "
+            "a.algo_type AS algo_type, a.preferences AS preferences, "
+            "NULLIF(a.algo_state->>'warmup_log_mu', '')::float AS warmup_log_mu, "
+            "NULLIF(a.algo_state->>'warmup_log_sigma', '')::float AS warmup_log_sigma, "
             "a.signal_post_ids AS signal_post_ids, a.dwell_times AS dwell_times, "
             "NULLIF(a.algo_state->>'signal_batch', '')::int AS signal_batch, "
             "a.algo_state->'inventory'->>'file_sha256' AS inventory_sha256 "
@@ -59,8 +62,12 @@ SQL_RECORD_ATTEMPTS = ("SELECT user_id, attempt, count(*) AS n_records, min(time
                        "max(timestamp_server) AS last_record_ms FROM record_entry "
                        "WHERE record_id > :after AND record_id <= :upto GROUP BY user_id, attempt")
 SQL_YOUGOV = "SELECT id AS user_id, yougov_id FROM visited_users WHERE yougov_id = ANY(:ids)"
+# local view: the participants of a country created from :since on (no yougov id is read)
+SQL_VIEW_USERS = ("SELECT id AS user_id, condition, done, cancelled, created_at FROM visited_users "
+                  "WHERE created_at >= :since ORDER BY id")
+VIEW_COLUMNS = ["user_id", "condition", "done", "cancelled", "created_at"]
 ALL_SQL = [SQL_COLUMNS, SQL_ID_RANGE, SQL_ID_PROBE, SQL_EXCHANGES, SQL_RECORD_COUNTS, SQL_ACTIVE, SQL_SPOT,
-           SQL_RECORD_ATTEMPTS, SQL_YOUGOV]
+           SQL_RECORD_ATTEMPTS, SQL_YOUGOV, SQL_VIEW_USERS]
 RECORD_ATTEMPT_COLUMNS = ["user_id", "attempt", "n_records", "first_record_ms", "last_record_ms"]
 
 
@@ -254,12 +261,18 @@ class LiveSource:
         return pd.DataFrame({"bin_ms": int(launch_ms) + df["b"].astype("int64") * int(bin_ms),
                              "n_active": df["n"].astype("int64")})
 
+    def view_users(self, cc, since_ms):
+        """DataFrame VIEW_COLUMNS of the participants created from since_ms on."""
+        return self.query(cc, SQL_VIEW_USERS, {"since": int(since_ms)})
+
     def spot(self, cc, uids):
-        """Exchanges of the listed participants with u_long and served_post_ids (SPOT_COLUMNS)."""
+        """Exchanges of the listed participants with profiles, signals and served posts (SPOT_COLUMNS)."""
         if not uids:
             return pd.DataFrame(columns=SPOT_COLUMNS)
         df = self.query(cc, SQL_SPOT, {"uids": [int(u) for u in uids]})
         df["u_long"] = df["u_long"].map(parse_json)
+        df["u_short"] = df["u_short"].map(parse_json)
+        df["preferences"] = df["preferences"].map(parse_json)
         df["served_post_ids"] = df["served_post_ids"].map(parse_json)
         df["signal_post_ids"] = df["signal_post_ids"].map(parse_json)
         df["dwell_times"] = df["dwell_times"].map(parse_json)
@@ -273,6 +286,10 @@ class ExportSource:
     def __init__(self, folder):
         self.folder = folder
         self._rec_cache = {}
+
+    def view_users(self, cc, since_ms):
+        v = self._read(cc, "visited_users", columns=VIEW_COLUMNS[1:] + ["id"]).rename(columns={"id": "user_id"})
+        return v[v["created_at"] >= int(since_ms)].sort_values("user_id")[VIEW_COLUMNS].reset_index(drop=True)
 
     def _read(self, cc, table, columns=None):
         files = glob.glob(os.path.join(self.folder, cc, "*", f"{table}.parquet"))
@@ -363,6 +380,11 @@ class ExportSource:
             "draw": state.map(lambda d: d.get("draw")).to_numpy(),
             "n_batches_served": state.map(lambda d: d.get("n_batches_served")).to_numpy(),
             "u_long": state.map(lambda d: d.get("u_long")).to_numpy(),
+            "u_short": state.map(lambda d: d.get("u_short")).to_numpy(),
+            "algo_type": ex["algo_type"].to_numpy(),
+            "preferences": (ex["preferences"].map(parse_json) if "preferences" in ex else pd.Series([None] * len(ex))).to_numpy(),
+            "warmup_log_mu": state.map(lambda d: d.get("warmup_log_mu")).to_numpy(),
+            "warmup_log_sigma": state.map(lambda d: d.get("warmup_log_sigma")).to_numpy(),
             "served_post_ids": ex["served_post_ids"].map(parse_json).to_numpy(),
             "signal_post_ids": (ex["signal_post_ids"].map(parse_json) if "signal_post_ids" in ex else pd.Series([None] * len(ex))).to_numpy(),
             "dwell_times": (ex["dwell_times"].map(parse_json) if "dwell_times" in ex else pd.Series([None] * len(ex))).to_numpy(),

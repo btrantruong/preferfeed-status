@@ -111,7 +111,7 @@ def test_detail_failure_keeps_core_and_previous_detail_rows(tmp_path):
 
 def spot_cfg(tmp_path, publish_spot="on"):
     """scenario with an inventory file that has the posts of the exchanges (a to o), so that the spot file is written."""
-    inv = pd.DataFrame({"post_id": list("abcdefghijklmno"), "country": "UK", "platform": "X", "text": "t",
+    inv = pd.DataFrame({"post_id": list("abcdefghijklmno"), "country": "UK", "platform": "X", "text": "t", "n_words": 3,
                         **{d: 1 for d in ["us_v_them", "fear", "outrage", "pride", "hope"]}})
     path = str(tmp_path / "inventory.parquet")
     inv.to_parquet(path)

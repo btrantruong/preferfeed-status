@@ -1,4 +1,4 @@
-/* Shared by sp1 and sp2: the list of participants of the spot check and the selection bar (one button per
+/* Used by sp.js and the trajectory panels: the list of participants of the spot check and the selection bar (one button per
    condition that cycles through that condition's participants, and a dropdown for a specific participant). */
 import { h } from "../util.js";
 import { lc, CONDITIONS, COND } from "../colors.js";
