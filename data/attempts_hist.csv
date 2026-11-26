@@ -822,8 +822,10 @@ bin_start,country,attempt_no,ends_as,dur_bin,n,sum_min
 2026-11-26T17:45:00Z,PL,2,restarted,2,1,1.922
 2026-11-26T17:45:00Z,PL,3,restarted,0,1,0.0
 2026-11-26T17:45:00Z,PL,3,restarted,3,1,2.086
+2026-11-26T17:45:00Z,PL,4,incomplete,0,1,0.0
 2026-11-26T17:45:00Z,PL,4,incomplete,1,1,0.757
-2026-11-26T17:45:00Z,PL,4,incomplete,3,1,2.921
+2026-11-26T17:45:00Z,PL,4,restarted,0,1,0.0
+2026-11-26T17:45:00Z,PL,4,restarted,7,1,6.755
 2026-11-26T18:00:00Z,DE,1,incomplete,5,1,4.504
 2026-11-26T18:00:00Z,FR,1,done,10,1,9.966
 2026-11-26T18:00:00Z,FR,1,done,8,1,7.337
@@ -831,8 +833,9 @@ bin_start,country,attempt_no,ends_as,dur_bin,n,sum_min
 2026-11-26T18:00:00Z,FR,1,incomplete,4,1,3.186
 2026-11-26T18:00:00Z,FR,1,incomplete,5,1,4.915
 2026-11-26T18:00:00Z,FR,1,restarted,8,1,7.921
-2026-11-26T18:00:00Z,FR,2,incomplete,2,1,1.089
 2026-11-26T18:00:00Z,FR,2,restarted,0,1,0.091
+2026-11-26T18:00:00Z,FR,2,restarted,6,1,5.933
+2026-11-26T18:00:00Z,FR,3,incomplete,1,1,0.596
 2026-11-26T18:00:00Z,FR,3,restarted,0,1,0.091
 2026-11-26T18:00:00Z,FR,4,incomplete,0,1,0.083
 2026-11-26T18:00:00Z,FR,4,restarted,1,1,0.341
@@ -889,7 +892,7 @@ bin_start,country,attempt_no,ends_as,dur_bin,n,sum_min
 2026-11-26T20:15:00Z,FR,1,done,8,1,7.398
 2026-11-26T20:30:00Z,FR,1,done,8,1,7.054
 2026-11-26T20:30:00Z,PL,1,done,8,1,7.001
-2026-11-26T20:45:00Z,DE,1,incomplete,6,1,5.09
+2026-11-26T20:45:00Z,DE,1,done,8,1,7.067
 2026-11-26T20:45:00Z,FR,1,incomplete,1,1,0.172
 2026-11-26T20:45:00Z,FR,1,restarted,3,1,2.424
-2026-11-26T20:45:00Z,FR,3,incomplete,6,1,5.006
+2026-11-26T20:45:00Z,FR,3,done,8,1,7.002
