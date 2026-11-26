@@ -123,3 +123,5 @@ bin_start,country,endpoint,n
 2026-11-26T09:55:00Z,DE,init,1
 2026-11-26T10:00:00Z,DE,next_batch,9
 2026-11-26T10:05:00Z,DE,next_batch,6
+2026-11-26T10:15:00Z,DE,init,1
+2026-11-26T10:15:00Z,DE,next_batch,1

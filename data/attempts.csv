@@ -48,3 +48,4 @@ bin_start,country,status,attempts,after_stop,n
 2026-11-25T23:45:00Z,UK,done,1,0,1
 2026-11-26T09:00:00Z,UK,done,1,0,1
 2026-11-26T09:45:00Z,DE,done,1,0,1
+2026-11-26T10:15:00Z,DE,incomplete,1,0,1
