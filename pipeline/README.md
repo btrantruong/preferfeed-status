@@ -1,6 +1,7 @@
 # pipeline
 
 Changelog
+- 2026-11-26: outcomes.py and the files outcome_bins.csv and retries.csv for panel A; attempts.csv is no longer built.
 - 2026-11-26: the spot check panel of the page is now E (page panels regrouped); text only.
 - 2026-11-25: sessions.py (attempts, time on the feed, in session or left), the incremental per-attempt record aggregates, three published session files and the local ids report (report.py, IDS_FILE).
 - 2026-11-25: spot_users.json (panel D) is published when SPOT_PUBLISH is on.
@@ -19,6 +20,7 @@ Pulls `visited_users` from each country database, gives each participant one sta
 | `run.py` | lock, `git pull --ff-only`, aggregate, summary, publish |
 | `db.py` | reads through `SubsetReader` from `preferfeed_dataaccess` (imported from `PFDA_DIR`): the core pull, the detail queries (read-only SELECT with a statement timeout) and the replay source that reads an export folder |
 | `checks.py` | attempts, retakes and integrity flags (pure functions) |
+| `outcomes.py` | outcome, retries and retry trigger per participant for panel A (pure functions; definitions in its docstring) |
 | `cubes.py` | one builder per published file and the registry of files, columns and window kinds |
 | `detail.py` | the detail pull per country, with the cache of final counts (`detail_cache.json` in `OUTDIR`) |
 | `sessions.py` | attempts, time on the feed and the in session / left state per participant (pure functions) |
@@ -65,6 +67,10 @@ With `DETAIL` basic or full every run also builds three published files (counts 
 The per-attempt record aggregates (rows, first and last time per participant and attempt) are read incrementally: `detail_cache.json` keeps them with the highest `record_id` already read, and a run reads only the ids above it, in chunks of `RECORD_CHUNK_IDS`, saving after each chunk, so a stopped first run resumes. `record_id` rises with time, so the aggregates stay exact, also for a restart after a long gap. `record_entry` and `algo_exchange` need their `attempt` column (a replay of an export without it assigns attempts from the init times).
 
 Local files in `OUTDIR` (never published): `participants_sessions.csv` (one row per participant: entry, time on the feed, both rules, state), `attempts_local.csv` (one row per attempt) and, if `IDS_FILE` is set in `config.local.env`, `ids_report.md`. The report takes the yougov ids of that file (one per line; `yougov_id` is read only for them) and lists, for each `SHORT_STAY_S` threshold (default 10 s and 60 s), the ids whose total time on the feed was shorter, how many of them restarted, the reasons (error codes logged during the attempt that ended in a restart, or none), whether a stop preceded the restart, and the median and maximum duration of the attempts that ended in a restart with the id of the longest.
+
+## Outcomes and retries (panel A)
+
+Every run adds the columns `outcome`, `last_error`, `retries`, `trigger` and `retry_outcome` to `participants.csv` and publishes the counts as `outcome_bins.csv` and `retries.csv`. They come from the core pull (the error log), so they exist with `DETAIL=off`; in session or left is the state of `sessions.py` for countries with a detail pull and otherwise the time since the last start against `SESSION_REF_FALLBACK_MIN`. `OUTCOME_IGNORE_CODES` lists the logged codes that are not errors, and `OUTCOME_BOT_CREATE_S` how close to `created_at` an automated-browser entry has to be to count as a blocked first start. `status_bins.csv` and the printed summary keep the stored status (done, cancelled, incomplete).
 
 ## Switching machines
 

@@ -1,6 +1,7 @@
 # preferFeed fielding status
 
 Changelog
+- 2026-11-26: panel A: outcome tree without the cancelled status (done by first try or retry, in session, left by errors and retries) and a new retries figure; `outcome_bins.csv` and `retries.csv` replace `attempts.csv`.
 - 2026-11-26: panels regrouped (B drop out stats, C request pulse and errors, D data completeness, E user spot check); requests per participant shows one condition at a time.
 - 2026-11-25: panel B pages 3 to 5: in session or left, time on the feed, attempt durations (sessions files, detail pull); a local ids report.
 - 2026-11-25: panel D: the draw button is replaced by one button per condition that cycles through its participants, plus a dropdown.
@@ -17,11 +18,21 @@ The page shows, per country server or for all countries, how many participants s
 
 ## Status definitions
 
-One participant is one row of the study's `visited_users` table with `created_at` on or after the launch. Each participant gets exactly one category at the time of the pull, so the shares add up to 100%.
+One participant is one row of the study's `visited_users` table with `created_at` on or after the launch. Each participant gets exactly one category at the time of the pull, so the shares add up to 100%. The page uses two sets of categories.
 
-- done: `done` is true (the participant reached the end page through the study timer).
-- cancelled: `cancelled` is true and `done` is not. The reason is the last stopping code in the participant's error log, ordered by server time: bot (automated browser detected), idle (too little focus time or too few posts viewed), reload (timeline page reloaded), or other (no stopping code). A participant can restart after bot or idle detection, so the last stop is the one shown.
-- incomplete: neither flag is set. possibly in session: created less than `session_min` minutes before the pull, so the status is not final. error logged: at least one logged error code outside `ignore_codes`. no error: the rest.
+Panel A:
+
+- done: `done` is true (the participant reached the end page through the study timer); first try, or after retry.
+- still in session: not done, not cancelled and inside the session time (the rule of panel B).
+- left session, split into no error and no retry; no error, retried; error, no retry (no error was logged before a restart); retried after error (an error was logged before the last restart). The two error categories are split by the type of the last error (idle, reload, bot, server, client, other).
+
+An error is a logged code outside `OUTCOME_IGNORE_CODES`; the stops by the software count as errors, and a cancelled participant without such a code has an error of type other. Retried means a `TIMELINE_RESTARTED` entry, or a start after being blocked as an automated browser at the first visit.
+
+Top panel and panels B and C (the stored status):
+
+- done: as above.
+- cancelled: `cancelled` is true and `done` is not. The reason is the last stopping code in the participant's error log, ordered by server time: bot (automated browser detected), idle (too little focus time or too few posts viewed), reload (timeline page reloaded), or other (no stopping code). A participant can restart after a stop, so the last stop is the one shown.
+- incomplete: neither flag is set. possibly in session: created less than `session_min` minutes before the pull, so the status is not final. error logged: at least one logged code outside `ignore_codes`. no error: the rest.
 
 The thresholds and codes used for a given pull are in `data/meta.json`.
 
@@ -29,7 +40,7 @@ The thresholds and codes used for a given pull are in `data/meta.json`.
 
 The top panel (participants since launch) and its window slider with two draggable handles stay on top. The country control selects the countries for every figure: All pools them by summing their counts, a click keeps one country. Each panel below has a pager; the last page viewed is remembered in the browser.
 
-- A. Completion status: the status of the participants at the last pull (cs0), condition balance (cs1), retaking attempts (cs2).
+- A. Completion status: the outcome of the participants at the last pull as a tree (cs0), condition balance (cs1), retries: what came before the last restart and how many retries, by outcome (cs2).
 - B. Drop out stats: in session or left by condition (ss1), time on the feed of done and not-done participants (ss2), duration of each attempt by attempt number and outcome (ss3).
 - C. Request pulse & errors: server errors over time (se1), errors by type and sequence (se2), where in the session the error happens (se3), status mix with and without server errors (se4), client-side network failures (se5); algorithm calls and active participants over time (ap1), warm-up exit (ap2).
 - D. Data completeness: requests per participant, one condition at a time with a button per condition (dc3), records per done participant (dc2), integrity-flag rate over time (dc1, with an i beside each flag for its definition).
@@ -43,9 +54,10 @@ All files are aggregate counts; only non-zero rows are listed; `bin_start` is UT
 
 | file | one row is | columns | page |
 |---|---|---|---|
-| `status_bins.csv` | participants in a bin | bin_start, country, status, reason, n | top, cs0 |
+| `status_bins.csv` | participants in a bin | bin_start, country, status, reason, n | top |
+| `outcome_bins.csv` | participants in a bin | bin_start, country, outcome, last_error, n | cs0, cs2 |
+| `retries.csv` | retried participants in a bin | bin_start, country, trigger, retries, retry_outcome, n | cs2 |
 | `status_detail.csv` | participants in a bin | bin_start, country, condition, started, has_server_error, status, reason, n | cs1, se4 |
-| `attempts.csv` | participants in a bin | bin_start, country, status, attempts, after_stop, n | cs2 |
 | `errors_time.csv` | SERVER_ERROR and CLIENT_* events in an event bin | bin_start, country, code, detail, n | se1, se5 |
 | `errors_age.csv` | error events by creation bin and age | bin_start, country, code, age_bin, n | se3 |
 | `error_flow.csv` | participants going from one error type to the next | bin_start, country, step, from_node, to_node, n | se2 |
@@ -57,7 +69,7 @@ All files are aggregate counts; only non-zero rows are listed; `bin_start` is UT
 | `active.csv` | active participants in an event bin | bin_start, country, n_active | ap1 |
 | `warmup.csv` | next_batch exchanges of non-RANDOM participants | bin_start, country, condition, request_index, n, n_algorithm | ap2 |
 
-Definitions that go beyond the status page: a retake is a timeline start after the first (visited_users.attempt, or the number of init exchanges where that column does not exist); after_stop marks participants with at least two starts and a stop code logged before the last start. Flags are evaluated on the final attempt of each done participant (the logic of check_user() in daily_check.py; never_left_warmup uses algo_state.phase). Details of error entries are published only if they are an exception class name (SERVER_ERROR) or HTTP followed by three digits (client codes); everything else is published as other.
+Definitions that go beyond the status page: in `retries.csv` an attempt runs from one restart to the next, `trigger` is the type of the last error of the attempt that the last restart ended (none if nothing was logged), and `retries` is capped at `attempts_max` - 1. Flags are evaluated on the final attempt of each done participant (the logic of check_user() in daily_check.py; never_left_warmup uses algo_state.phase). Details of error entries are published only if they are an exception class name (SERVER_ERROR) or HTTP followed by three digits (client codes); everything else is published as other.
 
 ## Code
 

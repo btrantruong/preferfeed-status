@@ -39,11 +39,16 @@ def test_records_of_the_final_attempt_only(run_full):
     assert h == {0: 1, 1: 2}  # user 3: 0 rows; users 1 (5 rows) and 2 (4 rows of the final attempt) in [1, 2000)
 
 
-def test_attempts_and_retook_after_stop(run_full):
-    cfg, _ = run_full
-    a = read(cfg, "attempts.csv")
-    got = {(r.attempts, r.after_stop): r.n for r in a.groupby(["attempts", "after_stop"])["n"].sum().reset_index().itertuples()}
-    assert got == {(1, 0): 2, (2, 1): 1, (0, 0): 1}  # user 3 has no init: no recorded start
+def test_outcomes_and_retries(run_full):
+    cfg, res = run_full
+    o = read(cfg, "outcome_bins.csv")
+    got = o.groupby(["outcome", "last_error"])["n"].sum().to_dict()
+    # 1 and 3 done at the first try, 2 done after an idle stop, 4 left with server and client errors
+    assert got == {("done_first", "none"): 2, ("done_retry", "none"): 1, ("left_error_no_retry", "client"): 1}
+    r = read(cfg, "retries.csv")
+    assert r[["trigger", "retries", "retry_outcome", "n"]].values.tolist() == [["idle", 1, "done", 1]]
+    assert o["n"].sum() == read(cfg, "status_bins.csv")["n"].sum()
+    assert "attempts.csv" not in res["files"] and "attempts.csv" not in res["meta"]["files"]
 
 
 def test_error_files_publish_only_clean_details(run_full):

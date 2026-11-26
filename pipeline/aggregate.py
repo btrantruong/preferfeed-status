@@ -22,6 +22,7 @@ import pandas as pd
 import checks
 import classify as C
 import cubes
+import outcomes as O
 import db
 import detail as D
 import report as R
@@ -195,16 +196,14 @@ def same_basis(prev_meta, cfg, launch_iso, cc=None, cc_launch_iso=None):
     return ok
 
 
-def fresh_countries(spec, core_ok, attempt_ok, detail_status, mode):
+def fresh_countries(spec, core_ok, detail_status, mode):
     if spec.coverage == "core":
         return set(core_ok)
-    if spec.coverage == "attempts":
-        return set(core_ok) & (set(attempt_ok) | {c for c, s in detail_status.items() if s == "ok"})
     ok = {c for c, s in detail_status.items() if s == "ok"} & set(core_ok)
     return ok if (spec.coverage == "detail" or mode == "full") else set()
 
 
-def assemble(cfg, inputs, core_ok, attempt_ok, detail_status, prev_meta, prev_frames, launch_iso, pulled_iso,
+def assemble(cfg, inputs, core_ok, detail_status, prev_meta, prev_frames, launch_iso, pulled_iso,
              launch_cc_iso=None):
     """Build every file, add the rows carried over for countries without fresh data.
     Returns ({name: frame}, {name: {"window", "columns", "as_of"}}) for the files to write."""
@@ -212,7 +211,7 @@ def assemble(cfg, inputs, core_ok, attempt_ok, detail_status, prev_meta, prev_fr
     launch_cc_iso = launch_cc_iso or {}
     out, info = {}, {}
     for spec in cubes.REGISTRY:
-        fresh = fresh_countries(spec, core_ok, attempt_ok, detail_status, mode)
+        fresh = fresh_countries(spec, core_ok, detail_status, mode)
         frame = spec.build(inputs)
         frame = frame[frame["country"].isin(fresh)] if not frame.empty else frame
         parts, as_of = [frame.astype(str)] if not frame.empty else [], {cc: pulled_iso for cc in fresh}
@@ -385,12 +384,12 @@ def run(cfg, pulled_ms=None, reader_cls=None):
         rec_all = pd.concat([r["rec_attempts"] for r in results.values()], ignore_index=True)
         att = SS.attempts_table(P, ex_all, rec_all, errors_long)
         sess = SS.participants_table(P[P["country"].isin(results)], att, pulled_ms, cfg.params)
+    P = O.add_outcomes(P, errors_long, sess, pulled_ms, cfg.stop_codes, cfg.params)
     inputs = cubes.Inputs(P=P, events=errors_long, ex=ex_all, active=act, launch_ms=launch_at_ms,
                           p=cfg.params, bin_minutes=cfg.bin_minutes, attempts=att, sessions=sess)
 
-    attempt_ok = [cc for cc in core_ok if P[P["country"] == cc].empty or P.loc[P["country"] == cc, "attempt"].notna().any()]
     prev_meta, prev_frames = previous_published(cfg.site_dir)
-    frames, files_info = assemble(cfg, inputs, core_ok, attempt_ok, detail_status, prev_meta, prev_frames,
+    frames, files_info = assemble(cfg, inputs, core_ok, detail_status, prev_meta, prev_frames,
                                   launch_iso, iso_utc(pulled_ms), launch_cc_iso)
     detail_prev = {cc: ((prev_meta or {}).get("detail", {}).get(cc) or {}).get("as_of") for cc in cfg.countries
                    if same_basis(prev_meta, cfg, launch_iso, cc, launch_cc_iso.get(cc))}

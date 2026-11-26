@@ -13,6 +13,7 @@ import config as cfgmod  # noqa: E402
 import cubes  # noqa: E402
 import db  # noqa: E402
 import detail  # noqa: E402
+import outcomes  # noqa: E402
 import spot  # noqa: E402
 from tests.test_aggregate import make_cfg  # noqa: E402
 
@@ -156,7 +157,7 @@ def test_config_divisibility_rules(tmp_path):
 
 
 def test_builders_handle_empty_inputs():
-    P = pd.DataFrame(columns=["country", "user_id", "created_at", "created_bin", "status", "reason", "condition", "started", "viewed_posts", "starts", "after_stop", "has_server_error", "n_records", "requests"])
+    P = pd.DataFrame(columns=["country", "user_id", "created_at", "created_bin", "status", "reason", "condition", "started", "viewed_posts", "starts", "after_stop", "has_server_error", "n_records", "requests"] + outcomes.COLUMNS)
     i = cubes.Inputs(P=P, events=pd.DataFrame(columns=["country", "user_id", "pos", "code", "detail", "timestamp_server", "ts"]), ex=None, active=None,
                      launch_ms=0, p=cfgmod.default_params(), bin_minutes=15)
     for spec in cubes.REGISTRY:

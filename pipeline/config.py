@@ -28,7 +28,9 @@ PARAM_SPEC = {
     "REQUESTS_MAX": ("int", 40),            # dc3: open last bin
     "BATCH_SIZE": ("int", 5),               # posts per batch (timeline config)
     "DIFF_RANGE": ("int", 10),              # dc3: requests minus viewed_posts / BATCH_SIZE, open ends at +-
-    "ATTEMPTS_MAX": ("int", 4),             # cs2: this many starts and more share one bin
+    "ATTEMPTS_MAX": ("int", 4),             # attempt histograms: this attempt and higher share one plot; cs2: ATTEMPTS_MAX - 1 retries and more share one bar
+    "OUTCOME_IGNORE_CODES": ("list", "NOT_FOUND,TIMELINE_RESTARTED,DUPLICATE_PARTICIPATION_ATTEMPT,SUPERSEDED_ATTEMPT"),   # panel A: codes that are not errors
+    "OUTCOME_BOT_CREATE_S": ("int", 5),     # panel A: an automated-browser entry this close to created_at blocked the first start
     "ATTEMPT_MARGIN_S": ("int", 10),        # records of the final attempt start this long before its init
     "ERROR_AGE_BIN_MIN": ("int", 1),        # se3
     "ERROR_AGE_MAX_MIN": ("int", 20),       # se3: open last bin; a multiple of ERROR_AGE_BIN_MIN
@@ -59,7 +61,8 @@ PARAM_SPEC = {
 PAGE_PARAMS = ["EVENT_BIN_MINUTES", "FLAG_BIN_MINUTES", "MIN_N_RATE", "RECORDS_BIN_WIDTH", "RECORDS_MAX",
                "REQUESTS_MAX", "BATCH_SIZE", "DIFF_RANGE", "ATTEMPTS_MAX", "ERROR_AGE_BIN_MIN",
                "ERROR_AGE_MAX_MIN", "SERVER_ERROR_CODE", "CLIENT_ERROR_CODES", "FLOW_STEPS",
-               "WARMUP_MAX_INDEX", "SPOT_MAX_USERS", "SPOT_DWELL_CAP_S", "DURATION_EDGES_S", "SESSION_SILENCE_S", "SESSION_RULE", "SESSION_REF_QUANTILE"]
+               "WARMUP_MAX_INDEX", "SPOT_MAX_USERS", "SPOT_DWELL_CAP_S", "DURATION_EDGES_S", "SESSION_SILENCE_S", "SESSION_RULE", "SESSION_REF_QUANTILE",
+               "SESSION_REF_FALLBACK_MIN", "OUTCOME_IGNORE_CODES"]
 DETAIL_MODES = ["off", "basic", "full"]
 
 
@@ -256,7 +259,8 @@ def validate_params(cfg):
     p = cfg.params
     for key in ("event_bin_minutes", "flag_bin_minutes", "records_bin_width", "records_max", "requests_max",
                 "batch_size", "diff_range", "attempts_max", "error_age_bin_min", "error_age_max_min",
-                "flow_steps", "warmup_max_index", "spot_max_users", "detail_timeout_s", "spot_dwell_cap_s"):
+                "flow_steps", "warmup_max_index", "spot_max_users", "detail_timeout_s", "spot_dwell_cap_s",
+                "outcome_bot_create_s"):
         if p[key] <= 0:
             raise ValueError(f"{key.upper()} must be > 0")
     if cfg.bin_minutes % p["event_bin_minutes"]:

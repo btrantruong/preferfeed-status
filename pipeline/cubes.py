@@ -9,7 +9,8 @@ The registry also drives meta.json (the page reads the file list from there), ca
 Inputs of a builder (class Inputs):
   P       one row per participant: country, user_id, created_at (ms), created_bin (ms), status, reason,
           condition, started, viewed_posts, starts (timeline starts, NaN if unknown), after_stop,
-          has_server_error, and for done participants the flags, requests, n_records (detail pull)
+          has_server_error, the columns of outcomes.COLUMNS, and for done participants the flags, requests,
+          n_records (detail pull)
   events  errors_long: country, user_id, pos, code, detail, timestamp_server, ts (ms)
   ex      exchanges with attempt_id and final_attempt (detail pull) or None
   active  country, bin_ms, n_active (detail pull, full) or None
@@ -47,7 +48,7 @@ class Spec:
     window: str        # created | event
     columns: list
     build: Callable
-    coverage: str      # core | attempts | detail | full
+    coverage: str      # core | detail | full
     help: str = ""
 
 
@@ -90,12 +91,17 @@ def status_detail(i):
                  ["bin_start", "country", "condition", "started", "has_server_error", "status", "reason", "n"])
 
 
-def attempts(i):
-    d = i.P[i.P["starts"].notna()].copy()
-    d["attempts"] = np.minimum(d["starts"], i.p["attempts_max"]).astype(int)
-    d["after_stop"] = d["after_stop"].astype(int)
-    return count(with_bin(d), ["bin_ms", "country", "status", "attempts", "after_stop"],
-                 ["bin_start", "country", "status", "attempts", "after_stop", "n"])
+def outcome_bins(i):
+    return count(with_bin(i.P), ["bin_ms", "country", "outcome", "last_error"],
+                 ["bin_start", "country", "outcome", "last_error", "n"])
+
+
+def retries(i):
+    """Retried participants only; the last value of `retries` (ATTEMPTS_MAX - 1) holds that many and more."""
+    d = i.P[i.P["retries"] > 0]
+    d = d.assign(retries=np.minimum(d["retries"].astype(int), i.p["attempts_max"] - 1))
+    return count(with_bin(d), ["bin_ms", "country", "trigger", "retries", "retry_outcome"],
+                 ["bin_start", "country", "trigger", "retries", "retry_outcome", "n"])
 
 
 def clean_detail(code, detail):
@@ -319,8 +325,10 @@ REGISTRY = [
     Spec("status_detail.csv", "created",
          ["bin_start", "country", "condition", "started", "has_server_error", "status", "reason", "n"],
          status_detail, "core"),
-    Spec("attempts.csv", "created", ["bin_start", "country", "status", "attempts", "after_stop", "n"],
-         attempts, "attempts"),
+    Spec("outcome_bins.csv", "created", ["bin_start", "country", "outcome", "last_error", "n"],
+         outcome_bins, "core"),
+    Spec("retries.csv", "created", ["bin_start", "country", "trigger", "retries", "retry_outcome", "n"],
+         retries, "core"),
     Spec("errors_time.csv", "event", ["bin_start", "country", "code", "detail", "n"], errors_time, "core"),
     Spec("errors_age.csv", "created", ["bin_start", "country", "code", "age_bin", "n"], errors_age, "core"),
     Spec("error_flow.csv", "created", ["bin_start", "country", "step", "from_node", "to_node", "n"],

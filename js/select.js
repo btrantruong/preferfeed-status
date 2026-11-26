@@ -7,7 +7,7 @@
 
 export const NUMERIC = new Set(["n", "n_done", "no_records", "no_init", "no_next_batch", "request_gap",
   "condition_mismatch", "never_left_warmup", "any_fail", "step", "attempts", "after_stop", "age_bin",
-  "records_bin", "requests", "diff", "request_index", "n_active", "n_algorithm", "started", "has_server_error", "n_disagree", "sum_min", "dur_bin", "attempt_no"]);
+  "records_bin", "requests", "diff", "request_index", "n_active", "n_algorithm", "started", "has_server_error", "n_disagree", "sum_min", "dur_bin", "attempt_no", "retries"]);
 
 /** CSV text to row objects (no quoted commas occur in the published files). */
 export function parseCSV(text) {
