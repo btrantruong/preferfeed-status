@@ -258,7 +258,7 @@ bin_start,country,status,reason,n
 2026-11-26T19:30:00Z,PL,incomplete,error_logged,3
 2026-11-26T19:45:00Z,DE,done,done,2
 2026-11-26T19:45:00Z,PL,done,done,1
-2026-11-26T20:00:00Z,PL,incomplete,no_error,1
+2026-11-26T20:00:00Z,PL,incomplete,error_logged,1
 2026-11-26T20:15:00Z,DE,done,done,1
 2026-11-26T20:15:00Z,FR,done,done,1
 2026-11-26T20:30:00Z,FR,done,done,1
