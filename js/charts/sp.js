@@ -15,6 +15,7 @@ export default {
   how: "The toggle moves panels 3 to 6 by two batches: read a column as the batch that informed the profile, or as the batch the profile chose.",
   draw(box, c) {
     box.replaceChildren();
+    if (c.spot && c.spot.local_full) box.append(h("p", { class: "cov" }, "Local full view: includes votes, not published. Spot data as of " + c.fm.fmtDayHM(Date.parse(c.spot.as_of)) + "."));
     const u = pickUser(box, c); if (!u) return;
     const host = h("div"); box.append(host);
     const draw = () => renderTrajectory(host, {

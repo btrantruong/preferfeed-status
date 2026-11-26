@@ -1,6 +1,7 @@
 # pipeline
 
 Changelog
+- 2026-11-26: spot_users_full.json (local) next to the filtered spot_users.json, preview.py --full, spot.violations() checked by publish.py before and after publication.
 - 2026-11-26: trajectory.py (batches, rebuilt rewards, checks), local_view.py (local page with every participant and field), more fields in the spot query, SPOT_PROFILE_CONDITIONS and the algorithm parameters.
 - 2026-11-26: outcomes.py and the files outcome_bins.csv and retries.csv for panel A; attempts.csv is no longer built.
 - 2026-11-26: the spot check panel of the page is now E (page panels regrouped); text only.
@@ -32,7 +33,7 @@ Pulls `visited_users` from each country database, gives each participant one sta
 | `classify.py` | status and reason per participant (pure functions) |
 | `aggregate.py` | runs the registry, carry-over for failed servers and failed detail pulls, `meta.json`, history |
 | `publish.py` | copies the produced registry files and `meta.json` into `../data/`, commits only them, pushes |
-| `preview.py` | serves the page locally with `/data/` mapped to the registry files of `OUTDIR`, `meta.json` and `spot_users.json` (panel E) from `OUTDIR` |
+| `preview.py` | serves the page locally with `/data/` mapped to the registry files of `OUTDIR`, `meta.json` and `spot_users.json` (panel E) from `OUTDIR`; with `--full` panel E reads `spot_users_full.json` |
 | `tests/` | synthetic tests (no study data) |
 
 ## Set up a machine (once)
@@ -84,6 +85,25 @@ Run on one machine at a time. To switch, run `./run.sh` on the other machine: it
 `DETAIL` in `config.env` is `off` (default: core files only), `basic` (record counts of done participants, algorithm exchanges, spot check) or `full` (adds the active participants per bin). Every detail statement is a read-only SELECT with a statement timeout (`DETAIL_TIMEOUT_S`); a country whose detail pull fails or times out keeps its last published detail rows, marked with their time in `meta.json`, and the core files are still published. `record_entry` has only its primary key as an index, so its queries are bounded by `record_id` (lower bound found by bisection on `timestamp_server`), counts of done participants are cached once final, and active participants are cached per finished bin. All other keys (bin widths, thresholds, histogram ranges, flow steps, spot check) are listed with comments in `config.env`; `config.py` checks that `EVENT_BIN_MINUTES` divides `BIN_MINUTES`, that `FLAG_BIN_MINUTES` is a multiple of it, and the other ranges.
 
 The spot check needs `INVENTORY_FILE` in `config.local.env` (the runtime inventory parquet, with `n_words`) and writes `OUTDIR/spot_users.json`, which holds, for up to `SPOT_MAX_USERS` participants per country (identified by database id), the posts they saw with their dwell times and batch means, and for the conditions in `SPOT_PROFILE_CONDITIONS` the rewards, u_short and u_long. A participant whose condition, or the algorithm type of any request, is outside that list gets none of those fields. With `SPOT_PUBLISH=on` (the default in `config.env`) `publish.py` copies the file into `data/` when the run produced a list of at least one participant, and `meta.json` records `spot.as_of` and `spot.n_users`; a run that writes none (detail off, no `INVENTORY_FILE`, no participants) leaves a published copy as it is. With `SPOT_PUBLISH=off` it is never copied and a published copy is deleted at the next publish. The file is about 2 MB for 38 participants; `SPOT_TEXT_MAX_CHARS` cuts long texts and `MAX_FILE_KB` warns.
+
+## Full and public spot check files
+
+Every run that builds the spot check writes two files to `OUTDIR` from one query:
+
+| file | content | published |
+|---|---|---|
+| `spot_users_full.json` | every field of every listed participant, including the rewards (votes) of the preference condition | never |
+| `spot_users.json` | the same participants; no rewards, u_short, u_long or checks outside `SPOT_PROFILE_CONDITIONS` | when `SPOT_PUBLISH=on` |
+
+```sh
+./run.sh --no-push                              # update both files, publish nothing
+uv run --locked python preview.py --full        # panel E with every field, this machine only
+uv run --locked python preview.py               # panel E as the public page shows it
+```
+
+`./run.sh` writes both files too and publishes the filtered one. An open preview page reads new files at its next refresh. `--full` is refused for a `--host` other than this machine, and the page then shows a line saying that the view is local.
+
+Before publishing, `publish.py` runs `spot.violations()`: a participant outside `SPOT_PROFILE_CONDITIONS` may hold only the fields listed in `spot.py`, so a new field is refused until it is listed. A spot file of the run that fails is not copied (a warning is printed and the other files are published; `meta.json` then still carries the time of this run under `spot`). A copy already in `data/` that this run does not replace is checked too and removed with the publish if it fails.
 
 ## Trajectories and the local view
 

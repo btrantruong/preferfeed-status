@@ -1,14 +1,19 @@
 """Git steps: update the clone before a run, and commit + push the data files after it.
 
 The data files are the files of cubes.REGISTRY that the run produced, plus meta.json and, when SPOT_PUBLISH is on,
-spot_users.json (panel E). Nothing else is ever copied: participants.csv, history/ and detail_cache.json stay in OUTDIR."""
+spot_users.json (panel E). Nothing else is ever copied: participants.csv, history/, detail_cache.json and
+spot_users_full.json stay in OUTDIR. A spot file that fails spot.violations() is not copied, and a copy already in data/
+that fails it is removed."""
+import json
 import os
 import shutil
 import subprocess
 import time
 
 import cubes
+import spot
 
+SPOT_NAME = "spot_users.json"
 DATA_FILES = cubes.FILE_NAMES + ["meta.json", "spot_users.json"]  # the only names that may be copied into data/
 
 
@@ -19,6 +24,16 @@ class PublishError(RuntimeError):
 def git(site_dir, *args, check=True):
     return subprocess.run(["git", "-C", site_dir, *args], check=check, capture_output=True,
                           text=True)
+
+
+def spot_problems(path, allowed):
+    """spot.violations of a file; a file that cannot be read as JSON is a problem too."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, ValueError) as e:
+        return [f"unreadable ({type(e).__name__})"]
+    return spot.violations(data, allowed)
 
 
 def current_branch(site_dir):
@@ -52,6 +67,12 @@ def publish(cfg, files, meta_path, pulled_at, warn=print, remove=()):
     outside = [n for n in copy if n not in DATA_FILES]
     if outside:
         raise PublishError(f"not a data file of the registry: {outside}")
+    if SPOT_NAME in copy:
+        problems = spot_problems(copy[SPOT_NAME], cfg.params["spot_profile_conditions"])
+        if problems:
+            warn(f"warning: {SPOT_NAME} of this run is NOT published, it holds private fields: {'; '.join(problems[:3])}"
+                 f" ({len(problems)} problems)")
+            del copy[SPOT_NAME]
     site = cfg.site_dir
     if current_branch(site) != cfg.git_branch:
         raise PublishError(f"clone is not on {cfg.git_branch}; not publishing")
@@ -71,6 +92,17 @@ def publish(cfg, files, meta_path, pulled_at, warn=print, remove=()):
         if os.path.isfile(target):
             os.remove(target)
             paths.append(f"data/{name}")   # the deletion is staged by git add and committed with the rest
+    # a public copy that this run does not replace is checked too (a failed spot build, or older code elsewhere)
+    published = os.path.join(data_dir, SPOT_NAME)
+    if SPOT_NAME not in copy and os.path.isfile(published):
+        problems = spot_problems(published, cfg.params["spot_profile_conditions"])
+        if problems:
+            warn(f"warning: the published {SPOT_NAME} holds private fields and is removed: {'; '.join(problems[:3])}"
+                 f" ({len(problems)} problems)")
+            tracked = git(site, "ls-files", "--", f"data/{SPOT_NAME}").stdout.strip()
+            os.remove(published)
+            if tracked:
+                paths.append(f"data/{SPOT_NAME}")
     git(site, "add", "--", *paths)
     msg = f"data: pulled_at {pulled_at} ({cfg.machine})"
     r = git(site, "commit", "--quiet", "-m", msg, "--", *paths, check=False)

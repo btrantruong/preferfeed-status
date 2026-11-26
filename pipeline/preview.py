@@ -1,7 +1,9 @@
 """Serve the page locally with /data/ mapped to OUTDIR (the last run's files, pushed or not).
 
-  ./run.sh is not needed; run:  uv run --locked python preview.py [--port 8765] [--host 127.0.0.1]
-/data/ is mapped to OUTDIR for the registry files, meta.json and spot_users.json (panel E).
+  ./run.sh is not needed; run:  uv run --locked python preview.py [--full] [--port 8765] [--host 127.0.0.1]
+/data/ is mapped to OUTDIR for the registry files, meta.json and spot_users.json (panel E, as published). With --full,
+data/spot_users.json is answered with spot_users_full.json: every field of the listed participants, including votes.
+--full is refused for a host other than this machine.
 Then open http://127.0.0.1:8765/ (on barnard through VS Code port forwarding).
 """
 import argparse
@@ -19,11 +21,15 @@ import cubes  # noqa: E402
 JS_FOLDERS = {"charts", "trajectory"}   # module folders under js/
 PUBLIC = {"index.html", ""}  # site files served from the clone; js/ and css/ are served by extension
 DATA_NAMES = set(cubes.FILE_NAMES) | {"meta.json", "spot_users.json"}  # the only files served under data/
+FULL_SPOT_FILE = "spot_users_full.json"
+LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
-    def __init__(self, *a, site_dir, data_dir, **kw):
-        self.site_dir, self.data_dir = site_dir, data_dir
+    spot_file = "spot_users.json"   # the file in data_dir that answers data/spot_users.json
+
+    def __init__(self, *a, site_dir, data_dir, spot_file="spot_users.json", **kw):
+        self.site_dir, self.data_dir, self.spot_file = site_dir, data_dir, spot_file
         super().__init__(*a, directory=site_dir, **kw)
 
     def translate_path(self, path):
@@ -32,7 +38,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if rel.startswith("data/"):
             name = rel[len("data/"):]
             # names of the registry only: never participants.csv, history/ or the cache
-            return os.path.join(self.data_dir, name) if name in DATA_NAMES else missing
+            if name not in DATA_NAMES:
+                return missing
+            return os.path.join(self.data_dir, self.spot_file if name == "spot_users.json" else name)
         parts = rel.split("/")
         if (len(parts) == 2 and parts[0] in ("js", "css") or len(parts) == 3 and parts[0] == "js" and parts[1] in JS_FOLDERS) \
                 and ".." not in parts and parts[-1].endswith((".js", ".css")):
@@ -46,17 +54,34 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         super().end_headers()
 
 
-def main():
+def spot_file_of(full, host, data_dir):
+    """The spot file to serve; raises ValueError when --full cannot be used."""
+    if not full:
+        return "spot_users.json"
+    if host not in LOCAL_HOSTS:
+        raise ValueError(f"--full shows private fields and is only served to this machine, not on --host {host}")
+    if not os.path.isfile(os.path.join(data_dir, FULL_SPOT_FILE)):
+        raise ValueError(f"no {FULL_SPOT_FILE} in {data_dir}: run ./run.sh --no-push first (DETAIL and INVENTORY_FILE set)")
+    return FULL_SPOT_FILE
+
+
+def main(argv=None):
     p = argparse.ArgumentParser()
+    p.add_argument("--full", action="store_true", help="panel E with every field (local only)")
     p.add_argument("--port", type=int, default=8765)
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--data-dir", help="folder with status_bins.csv and meta.json (default OUTDIR)")
-    args = p.parse_args()
+    args = p.parse_args(argv)
     cfg = cfgmod.load(HERE)
     data_dir = args.data_dir or cfg.outdir
-    handler = functools.partial(Handler, site_dir=cfg.site_dir, data_dir=data_dir)
+    try:
+        spot_file = spot_file_of(args.full, args.host, data_dir)
+    except ValueError as e:
+        p.error(str(e))
+    handler = functools.partial(Handler, site_dir=cfg.site_dir, data_dir=data_dir, spot_file=spot_file)
     with http.server.ThreadingHTTPServer((args.host, args.port), handler) as srv:
-        print(f"serving {cfg.site_dir} with data from {data_dir} at http://{args.host}:{args.port}/")
+        print(f"serving {cfg.site_dir} with data from {data_dir} at http://{args.host}:{args.port}/"
+              + ("  (FULL spot data, local only)" if args.full else ""))
         srv.serve_forever()
 
 

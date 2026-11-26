@@ -1,6 +1,7 @@
 # preferFeed fielding status
 
 Changelog
+- 2026-11-26: each pull writes a full local spot check file and the filtered public one; `preview.py --full` shows the full one locally; publishing checks the spot file and removes a public copy that holds private fields.
 - 2026-11-26: panel E is one page of stacked trajectory panels (batch sums, batch means per dimension, rewards, u_short, u_long) with an alignment toggle; rewards and profile are published only for the conditions in `SPOT_PROFILE_CONDITIONS` (attention and random).
 - 2026-11-26: panel A: outcome tree without the cancelled status (done by first try or retry, in session, left by errors and retries) and a new retries figure; `outcome_bins.csv` and `retries.csv` replace `attempts.csv`.
 - 2026-11-26: panels regrouped (B drop out stats, C request pulse and errors, D data completeness, E user spot check); requests per participant shows one condition at a time.
@@ -15,7 +16,7 @@ Changelog
 
 Page: https://btrantruong.github.io/preferfeed-status/
 
-The page shows, per country server or for all countries, how many participants started the study since the launch and the status of each at the last data pull. Aggregate counts are published, with one exception: panel E shows, for a list of participants identified by their database id, the posts they were served and the time spent on each post, and for the conditions in `SPOT_PROFILE_CONDITIONS` (attention and random) also the rewards and the profile of the algorithm (no survey id or survey answers). The rewards of the preference condition are the participant's votes, so rewards, u_short and u_long are left out for it; its served posts were still chosen by its profile. Files published before 2026-11-26 held u_long for every condition and stay in the git history. `SPOT_PUBLISH=off` in `pipeline/config.env` stops the publication and removes the published copy.
+The page shows, per country server or for all countries, how many participants started the study since the launch and the status of each at the last data pull. Aggregate counts are published, with one exception: panel E shows, for a list of participants identified by their database id, the posts they were served and the time spent on each post, and for the conditions in `SPOT_PROFILE_CONDITIONS` (attention and random) also the rewards and the profile of the algorithm (no survey id or survey answers). The rewards of the preference condition are the participant's votes, so rewards, u_short and u_long are left out for it; its served posts were still chosen by its profile. Files published before 2026-11-26 held u_long for every condition and stay in the git history. `SPOT_PUBLISH=off` in `pipeline/config.env` stops the publication and removes the published copy. The full data stays on the machine that runs the pipeline (`spot_users_full.json` in its output folder) and is never published: `publish.py` refuses a spot file in which a participant outside `SPOT_PROFILE_CONDITIONS` holds any other field, and removes such a copy from `data/`.
 
 ## Status definitions
 

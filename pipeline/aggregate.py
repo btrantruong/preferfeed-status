@@ -8,8 +8,8 @@ and bin widths), and meta.json keeps its as_of. The detail files (record_entry, 
 failure domain: a country whose detail pull fails, or all countries when DETAIL=off, keep their last published
 detail rows, marked with their own as_of in meta.files and meta.detail.
 
-Row-level files stay in OUTDIR: participants.csv, history/ and detail_cache.json. spot_users.json (panel E) is published
-with the data when SPOT_PUBLISH is on.
+Row-level files stay in OUTDIR: participants.csv, history/, detail_cache.json and spot_users_full.json. spot_users.json
+(panel E, the filtered copy) is published with the data when SPOT_PUBLISH is on.
 """
 import json
 import os
@@ -31,6 +31,7 @@ import spot as S
 import trajectory as TR
 
 SPOT_FILE = "spot_users.json"
+SPOT_FULL_FILE = "spot_users_full.json"   # OUTDIR only, never published
 PREV_COUNTRY_FILE = "status_bins.csv"  # the only published file of the first page version
 BIN_COLUMNS = cubes.BY_NAME["status_bins.csv"].columns
 HISTORY_COLUMNS = ["pulled_at", "machine", "launch_utc"] + BIN_COLUMNS
@@ -285,10 +286,18 @@ def append_history(outdir, bins, pulled_iso, machine, launch_iso):
 
 
 # ---- spot check (panel E) ----------------------------------------------------------------------------
-def write_spot(cfg, source, P, ex_all, detail_status, outdir):
-    """OUTDIR/spot_users.json for the listed participants. Returns (note, n_users): n_users is 0 when nothing was
-    written or the list is empty. The file is published only if SPOT_PUBLISH is on (publish.py)."""
-    path = os.path.join(outdir, "spot_users.json")
+def write_spot_files(data, allowed, as_of, outdir):
+    """The full file (local) and the public one derived from it."""
+    full = {**data, S.FULL_MARK: True, "as_of": as_of}
+    write_atomic(os.path.join(outdir, SPOT_FULL_FILE), json.dumps(full, allow_nan=False))
+    write_atomic(os.path.join(outdir, SPOT_FILE), json.dumps(S.public_view(data, allowed), allow_nan=False))
+
+
+def write_spot(cfg, source, P, ex_all, detail_status, outdir, as_of):
+    """OUTDIR/spot_users_full.json and spot_users.json for the listed participants. Returns (note, n_users): n_users
+    is 0 when nothing was written or the list is empty. Only spot_users.json is published, and only if SPOT_PUBLISH
+    is on (publish.py)."""
+    allowed = cfg.params["spot_profile_conditions"]
     if cfg.params["detail"] == "off":
         return "off", 0
     if not cfg.inventory_file or not os.path.isfile(cfg.inventory_file):
@@ -308,11 +317,11 @@ def write_spot(cfg, source, P, ex_all, detail_status, outdir):
             picks[cc] = (ids, defaults, sub)
             rows[cc] = source.spot(cc, ids)
         if not picks:
-            write_atomic(path, json.dumps({"users": [], "posts": {}, "inventory": {}, "dims": S.PROFILE_DIMS}))
+            write_spot_files({"users": [], "posts": {}, "inventory": {}, "dims": S.PROFILE_DIMS}, allowed, as_of, outdir)
             return "no participants", 0
         inventories = TR.prepare_inventory(pd.read_parquet(cfg.inventory_file, columns=TR.INVENTORY_COLUMNS))
         data = S.build_spot(picks, rows, inventories, cfg.params, S.file_sha256(cfg.inventory_file))
-        write_atomic(path, json.dumps(data, allow_nan=False))
+        write_spot_files(data, allowed, as_of, outdir)
         note = f"{len(data['users'])} participants"
         return note + (f" (dwell not matched to a batch: {data['dwell_unmatched']})" if data["dwell_unmatched"] else ""), len(data["users"])
     except Exception as e:  # the spot check must never fail a pull
@@ -392,7 +401,8 @@ def run(cfg, pulled_ms=None, reader_cls=None):
                                   launch_iso, iso_utc(pulled_ms), launch_cc_iso)
     detail_prev = {cc: ((prev_meta or {}).get("detail", {}).get(cc) or {}).get("as_of") for cc in cfg.countries
                    if same_basis(prev_meta, cfg, launch_iso, cc, launch_cc_iso.get(cc))}
-    spot_note, n_spot = write_spot(cfg, source, P, ex_all, detail_status, cfg.outdir)
+    spot_note, n_spot = write_spot(cfg, source, P, ex_all, detail_status, cfg.outdir, iso_utc(pulled_ms))
+    spot_full = os.path.join(cfg.outdir, SPOT_FULL_FILE) if n_spot else None
     published = cfg.params["spot_publish"] == "on"
     if n_spot and published:
         spot_info = {"as_of": iso_utc(pulled_ms), "n_users": n_spot}
@@ -425,7 +435,8 @@ def run(cfg, pulled_ms=None, reader_cls=None):
         append_history(cfg.outdir, frames[PREV_COUNTRY_FILE], meta["pulled_at"], cfg.machine, meta["launch_utc"])
     return {"meta": meta, "meta_path": meta_path, "files": paths, "bins_path": paths.get(PREV_COUNTRY_FILE),
             "participants": classified, "failures": failures, "detail_status": detail_status,
-            "detail_errors": detail_errors, "sizes": sizes, "spot": spot_note, "remove": remove, "ids_report": ids_note}
+            "detail_errors": detail_errors, "sizes": sizes, "spot": spot_note, "spot_full": spot_full,
+            "remove": remove, "ids_report": ids_note}
 
 
 def summary_table(result):

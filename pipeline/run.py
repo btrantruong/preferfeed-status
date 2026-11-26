@@ -85,6 +85,8 @@ def main(argv=None):
             print(f"detail failed {cc}: {err} (detail files keep that country's last published rows)")
         print(f"ids report (local only): {result['ids_report']}")
         print(f"spot check (panel E, {'published' if cfg.params['spot_publish'] == 'on' else 'not published'}): {result['spot']}")
+        if result["spot_full"]:
+            print(f"spot check, full file (local only; preview.py --full): {result['spot_full']}")
         big = [f"{n} {sz // 1024} KB" for n, sz in result["sizes"].items() if sz > cfg.params["max_file_kb"] * 1024]
         print("file sizes: " + ", ".join(f"{n} {sz / 1024:.0f} KB" for n, sz in result["sizes"].items()))
         if big:
