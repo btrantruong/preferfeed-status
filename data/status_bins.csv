@@ -273,3 +273,4 @@ bin_start,country,status,reason,n
 2026-11-26T21:45:00Z,FR,done,done,1
 2026-11-26T22:00:00Z,DE,done,done,1
 2026-11-26T22:00:00Z,DE,incomplete,no_error,1
+2026-11-27T00:00:00Z,DE,incomplete,in_session,1
