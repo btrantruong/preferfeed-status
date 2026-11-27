@@ -332,4 +332,4 @@ bin_start,country,outcome,last_error,n
 2026-11-26T22:00:00Z,DE,done_first,none,1
 2026-11-26T22:00:00Z,DE,left_no_error,none,1
 2026-11-27T00:00:00Z,DE,done_first,none,1
-2026-11-27T00:45:00Z,PL,in_session,none,1
+2026-11-27T00:45:00Z,PL,done_first,none,1

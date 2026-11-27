@@ -467,4 +467,4 @@ bin_start,country,condition,started,has_server_error,status,reason,n
 2026-11-26T22:00:00Z,DE,RANDOM,1,0,done,done,1
 2026-11-26T22:00:00Z,DE,RANDOM,1,0,incomplete,no_error,1
 2026-11-27T00:00:00Z,DE,RANDOM,1,0,done,done,1
-2026-11-27T00:45:00Z,PL,RANDOM,1,0,incomplete,in_session,1
+2026-11-27T00:45:00Z,PL,RANDOM,1,0,done,done,1
