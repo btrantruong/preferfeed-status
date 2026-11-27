@@ -907,3 +907,4 @@ bin_start,country,attempt_no,ends_as,dur_bin,n,sum_min
 2026-11-26T22:00:00Z,DE,1,done,11,1,10.16
 2026-11-26T22:00:00Z,DE,1,incomplete,16,1,18.769
 2026-11-27T00:00:00Z,DE,1,done,8,1,7.052
+2026-11-27T00:45:00Z,PL,1,incomplete,1,1,0.51
